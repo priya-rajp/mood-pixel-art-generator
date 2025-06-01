@@ -40,12 +40,86 @@
             const [errorMessage, setErrorMessage] = React.useState('');
             const [affirmation, setAffirmation] = React.useState('');
             const [isAffirmationLoading, setIsAffirmationLoading] = React.useState(false);
-            const [llmConcept, setLlmConcept] = React.useState(''); // Stores the concept from LLM
-            const [llmPalette, setLlmPalette] = React.useState([]); // Stores the color palette from LLM
+            const [llmConcept, setLlmConcept] = React.useState(''); // Stores the concept from "local LLM"
+            const [llmPalette, setLlmPalette] = React.useState([]); // Stores the color palette from "local LLM"
             const [artDescription, setArtDescription] = React.useState(''); // New state for art description
             const [isDescriptionLoading, setIsDescriptionLoading] = React.useState(false);
 
             const canvasRef = React.useRef(null); // Reference to the canvas element
+
+            // --- Predefined Data for Local Generation (replaces API calls) ---
+
+            // Positive affirmations
+            const positiveAffirmations = [
+                "You are capable of amazing things.",
+                "Every day is a new opportunity to shine.",
+                "Your strength is greater than any struggle.",
+                "Believe in yourself and all that you are.",
+                "You are worthy of happiness and success.",
+                "Embrace the journey, enjoy the growth.",
+                "Today is a gift, that's why it's called the present.",
+                "Your potential is limitless.",
+                "You are a beacon of positive energy.",
+                "Great things are coming your way."
+            ];
+
+            // Positive pixel art concepts and associated palettes
+            const positiveArtConceptsAndPalettes = [
+                {
+                    concept: "A vibrant abstract pattern of swirling colors, evoking a sense of light and freedom.",
+                    palette: ["#FFD700", "#FFA500", "#87CEEB", "#90EE90", "#FF69B4"] // Gold, Orange, Sky Blue, Light Green, Hot Pink
+                },
+                {
+                    concept: "A serene landscape with a rising sun, bringing warmth and new beginnings.",
+                    palette: ["#FFCC33", "#FF9900", "#66CCFF", "#99FF99", "#FFCCCC"] // Golden Yellow, Orange, Light Blue, Mint Green, Light Pink
+                },
+                {
+                    concept: "A cheerful, pixelated garden bursting with happy flowers and bright skies.",
+                    palette: ["#FFCC00", "#FF6666", "#66FF66", "#33CCFF", "#FF99CC"] // Yellow, Red-Orange, Bright Green, Cerulean, Pink
+                },
+                {
+                    concept: "An uplifting abstract design with geometric shapes and harmonious gradients.",
+                    palette: ["#ADD8E6", "#87CEEB", "#6495ED", "#4682B4", "#7B68EE"] // Light Blue, Sky Blue, Cornflower Blue, Steel Blue, Medium Slate Blue
+                },
+                {
+                    concept: "A playful scene of stars twinkling in a peaceful night sky, full of wonder.",
+                    palette: ["#F0E68C", "#DAA520", "#4682B4", "#7B68EE", "#DDA0DD"] // Khaki, Goldenrod, Steel Blue, Medium Slate Blue, Plum
+                },
+                {
+                    concept: "A burst of positive energy, represented by dynamic lines and contrasting bright colors.",
+                    palette: ["#FF4500", "#FFD700", "#ADFF2F", "#00BFFF", "#FF1493"] // OrangeRed, Gold, GreenYellow, DeepSkyBlue, DeepPink
+                }
+            ];
+
+            // Mapping of HEX codes to common color names for descriptions
+            const hexToColorName = {
+                "#FFD700": "Gold",
+                "#FFA500": "Orange",
+                "#87CEEB": "Sky Blue",
+                "#90EE90": "Light Green",
+                "#FF69B4": "Hot Pink",
+                "#FFCC33": "Golden Yellow",
+                "#FF9900": "Orange", // Duplicate, but good to have explicit mapping
+                "#66CCFF": "Light Blue",
+                "#99FF99": "Mint Green",
+                "#FFCCCC": "Light Pink",
+                "#FFCC00": "Yellow",
+                "#FF6666": "Red-Orange",
+                "#66FF66": "Bright Green",
+                "#33CCFF": "Cerulean",
+                "#FF99CC": "Pink",
+                "#ADD8E6": "Light Blue", // Duplicate
+                "#6495ED": "Cornflower Blue",
+                "#4682B4": "Steel Blue",
+                "#7B68EE": "Medium Slate Blue",
+                "#F0E68C": "Khaki",
+                "#DAA520": "Goldenrod",
+                "#DDA0DD": "Plum",
+                "#FF4500": "Orange Red",
+                "#ADFF2F": "Green Yellow",
+                "#00BFFF": "Deep Sky Blue",
+                "#FF1493": "Deep Pink"
+            };
 
             // --- Utility for drawing pixel art on Canvas ---
             const drawPixelArt = (canvas, concept, palette) => {
@@ -108,8 +182,7 @@
             };
 
             /**
-             * Generates a positive affirmation based on the user's mood input.
-             * Uses the Gemini 2.0 Flash model.
+             * Generates a positive affirmation from a local list.
              */
             const generateAffirmation = async () => {
                 setIsAffirmationLoading(true);
@@ -117,42 +190,11 @@
                 setErrorMessage('');
 
                 try {
-                    const affirmationPayload = {
-                        contents: [
-                            {
-                                role: "user",
-                                parts: [
-                                    {
-                                        text: `Given the user's mood is described as "${moodInput}", generate a short, positive, and uplifting affirmation or a reflective thought. Keep it concise and inspiring.`
-                                    }
-                                ]
-                            }
-                        ]
-                    };
+                    // Simulate API call delay
+                    await new Promise(resolve => setTimeout(resolve, 500));
 
-                    const apiKey = ""; // API key will be provided by the environment
-                    const affirmationApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-                    const response = await fetch(affirmationApiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(affirmationPayload)
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Affirmation API error: ${response.status} - ${errorText}`);
-                    }
-
-                    const result = await response.json();
-
-                    if (result.candidates && result.candidates.length > 0 &&
-                        result.candidates[0].content && result.candidates[0].content.parts &&
-                        result.candidates[0].content.parts.length > 0) {
-                        setAffirmation(result.candidates[0].content.parts[0].text);
-                    } else {
-                        throw new Error('Failed to generate affirmation. AI response was empty or malformed.');
-                    }
+                    const randomAffirmation = positiveAffirmations[Math.floor(Math.random() * positiveAffirmations.length)];
+                    setAffirmation(randomAffirmation);
 
                 } catch (error) {
                     console.error('Error generating affirmation:', error);
@@ -164,87 +206,29 @@
 
 
             /**
-             * Generates the pixel art.
-             * It first uses Gemini 2.0 Flash to get a concept and color palette,
-             * then uses the local algorithmic pixel art generator.
+             * Generates the pixel art concept and palette locally, then draws the art.
              */
             const generateArt = async () => {
                 setIsLoading(true);
                 setPixelArtDataUrl('');
-                setArtDescription(''); // Clear previous description
+                setArtDescription('');
                 setErrorMessage('');
-                setLlmConcept(''); // Clear previous LLM outputs
+                setLlmConcept('');
                 setLlmPalette([]);
 
                 try {
-                    // Step 1: Use Gemini 2.0 Flash to generate a positive art concept and color palette
-                    // Instruct the LLM to output a JSON string for easy parsing
-                    const promptPayload = {
-                        contents: [
-                            {
-                                role: "user",
-                                parts: [
-                                    {
-                                        text: `Given the user's current mood is described as "${moodInput}", generate a JSON object with two fields: "concept" and "palette".
-                                        The "concept" should be a concise, positive, and uplifting idea for pixel art, focusing on vibrant, serene, or abstract beauty that evokes joy, peace, or optimism.
-                                        The "palette" should be an array of 3-5 HEX color codes (e.g., ["#FFD700", "#FFA500", "#87CEEB"]) selected to make the user feel positive based on color psychology.
-                                        Focus on colors like bright yellows (joy, optimism), oranges (enthusiasm, warmth), light blues (serenity, calm), greens (harmony, growth), and soft pinks (playfulness, compassion).
-                                        Example output:
-                                        {"concept": "A vibrant abstract pattern of swirling colors, evoking a sense of light and freedom.", "palette": ["#FFD700", "#FFA500", "#87CEEB", "#90EE90"]}`
-                                    }
-                                ]
-                            }
-                        ]
-                    };
+                    // Simulate API call delay
+                    await new Promise(resolve => setTimeout(resolve, 1000));
 
-                    const apiKey = "";
-                    const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    // Step 1: Locally determine concept and palette based on mood (simplified)
+                    // For a more advanced local version, you could map keywords in moodInput
+                    // to specific concepts/palettes. For now, we'll pick randomly.
+                    const randomArtData = positiveArtConceptsAndPalettes[Math.floor(Math.random() * positiveArtConceptsAndPalettes.length)];
+                    const concept = randomArtData.concept;
+                    const palette = randomArtData.palette;
 
-                    const textResponse = await fetch(textApiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(promptPayload)
-                    });
-
-                    if (!textResponse.ok) {
-                        const errorText = await textResponse.text();
-                        throw new Error(`Concept/Palette API error: ${textResponse.status} - ${errorText}`);
-                    }
-
-                    const textResult = await textResponse.json();
-
-                    let concept = '';
-                    let palette = [];
-                    if (textResult.candidates && textResult.candidates.length > 0 &&
-                        textResult.candidates[0].content && textResult.candidates[0].content.parts &&
-                        textResult.candidates[0].content.parts.length > 0) {
-                        let rawLlmText = textResult.candidates[0].content.parts[0].text;
-
-                        // Remove markdown code block wrappers if present and trim whitespace
-                        rawLlmText = rawLlmText.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
-
-                        try {
-                            // Attempt to parse the LLM's response as JSON
-                            const llmOutput = JSON.parse(rawLlmText);
-                            concept = llmOutput.concept || "An uplifting abstract design.";
-                            palette = llmOutput.palette || [];
-
-                            // Basic validation for palette (ensure it's an array of strings)
-                            if (!Array.isArray(palette) || palette.some(c => typeof c !== 'string')) {
-                                console.warn("LLM returned malformed palette, using default.");
-                                palette = ['#87CEEB', '#90EE90', '#FFD700']; // Default positive palette
-                            }
-                        } catch (parseError) {
-                            console.warn("LLM response not valid JSON, using fallback concept/palette.");
-                            concept = rawLlmText; // Use raw text as concept if JSON parsing fails
-                            palette = ['#87CEEB', '#90EE90', '#FFD700']; // Default positive palette
-                            setErrorMessage("AI concept/palette might be malformed, using fallback. Error: " + parseError.message);
-                        }
-                        setLlmConcept(concept);
-                        setLlmPalette(palette);
-                    } else {
-                        throw new Error('Failed to generate concept/palette. AI response was empty or malformed.');
-                    }
+                    setLlmConcept(concept);
+                    setLlmPalette(palette);
 
                     // Step 2: Generate pixel art on canvas using the concept and palette
                     const canvas = canvasRef.current;
@@ -252,20 +236,19 @@
                         const dataUrl = drawPixelArt(canvas, concept, palette);
                         setPixelArtDataUrl(dataUrl);
                     } else {
-                        throw new Error('Canvas element not found. Please try generating art again.');
+                        throw new Error('Canvas element not found. This should not happen as canvas is always rendered.');
                     }
 
                 } catch (error) {
                     console.error('Error generating art:', error);
-                    setErrorMessage(`Error: ${error.message || 'Something went wrong during art generation. Please check your network connection or try again later.'}`);
+                    setErrorMessage(`Error: ${error.message || 'Something went wrong during art generation. Please try again.'}`);
                 } finally {
                     setIsLoading(false);
                 }
             };
 
             /**
-             * Generates a description for the generated art based on the LLM's concept and palette.
-             * Uses the Gemini 2.0 Flash model.
+             * Generates a description for the generated art locally.
              */
             const describeArt = async () => {
                 setIsDescriptionLoading(true);
@@ -273,46 +256,19 @@
                 setErrorMessage('');
 
                 try {
+                    // Simulate API call delay
+                    await new Promise(resolve => setTimeout(resolve, 700));
+
                     if (!llmConcept || llmPalette.length === 0) {
                         throw new Error('No art concept or palette available to describe. Please generate art first.');
                     }
 
-                    const descriptionPayload = {
-                        contents: [
-                            {
-                                role: "user",
-                                parts: [
-                                    {
-                                        text: `Given the pixel art concept was: "${llmConcept}" and the colors used were: ${llmPalette.join(', ')}. Provide a concise, positive, and inspiring interpretation or description of the art. Focus on the uplifting aspects and potential feelings it evokes.`
-                                    }
-                                ]
-                            }
-                        ]
-                    };
-
-                    const apiKey = "";
-                    const descriptionApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-                    const response = await fetch(descriptionApiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(descriptionPayload)
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Art description API error: ${response.status} - ${errorText}`);
-                    }
-
-                    const result = await response.json();
-
-                    if (result.candidates && result.candidates.length > 0 &&
-                        result.candidates[0].content && result.candidates[0].content.parts &&
-                        result.candidates[0].content.parts.length > 0) {
-                        setArtDescription(result.candidates[0].content.parts[0].text);
-                    } else {
-                        throw new Error('Failed to generate art description. AI response was empty or malformed.');
-                    }
+                    // Convert HEX codes to color names
+                    const colorNames = llmPalette.map(hex => hexToColorName[hex] || hex); // Fallback to HEX if name not found
+                    
+                    // Generate a simple description based on the stored concept and palette
+                    const description = `This pixel art is based on the concept: "${llmConcept}". It uses a vibrant palette of colors including ${colorNames.join(', ')}, designed to evoke feelings of positivity and joy.`;
+                    setArtDescription(description);
 
                 } catch (error) {
                     console.error('Error describing art:', error);
