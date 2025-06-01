@@ -22,6 +22,31 @@
             image-rendering: pixelated;                 /* CSS4 */
             -ms-interpolation-mode: nearest-neighbor;   /* IE */
         }
+        .suggestions-list {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background-color: white;
+            z-index: 10;
+            position: absolute; /* To position it directly below the input */
+            width: calc(100% - 2rem); /* Match input width with padding */
+            left: 1rem; /* Match input padding */
+            right: 1rem;
+        }
+        .suggestion-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            text-align: left;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        .suggestion-item:hover {
+            background-color: #f7fafc;
+        }
     </style>
 </head>
 <body>
@@ -48,9 +73,28 @@
             const [selectedPixelSize, setSelectedPixelSize] = React.useState(10);
             const [moodIntensity, setMoodIntensity] = React.useState(50);
 
+            // New states for mood suggestions
+            const [showSuggestions, setShowSuggestions] = React.useState(false);
+            const [filteredSuggestions, setFilteredSuggestions] = React.useState([]);
+
             const canvasRef = React.useRef(null);
             const artContainerRef = React.useRef(null);
+            const moodInputRef = React.useRef(null); // Ref for mood input
             const [canvasSize, setCanvasSize] = React.useState(400);
+
+            // Click outside to close suggestions
+            React.useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (moodInputRef.current && !moodInputRef.current.contains(event.target)) {
+                        setShowSuggestions(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => {
+                    document.removeEventListener('mousedown', handleClickOutside);
+                };
+            }, [moodInputRef]);
+
 
             React.useEffect(() => {
                 const updateCanvasSize = () => {
@@ -73,6 +117,15 @@
                 "You are worthy of happiness and success.", "Embrace the journey, enjoy the growth.",
                 "Today is a gift, that's why it's called the present.", "Your potential is limitless.",
                 "You are a beacon of positive energy.", "Great things are coming your way."
+            ], []);
+
+            // New list of mood suggestions for autocompletion
+            const moodSuggestions = React.useMemo(() => [
+                "happy", "joyful", "calm", "peaceful", "energetic", "creative", "excited",
+                "hopeful", "relaxed", "serene", "tranquil", "playful", "bright", "lively",
+                "focused", "thoughtful", "balanced", "structured", "harmonious", "dreamy",
+                "wonder", "curious", "imaginative", "renewed", "restful", "vibrant", "powerful",
+                "fresh", "growth", "new beginnings", "optimistic", "strong", "inspired", "grateful"
             ], []);
 
             const positiveArtConceptsAndPalettes = React.useMemo(() => [
@@ -138,6 +191,28 @@
                     moodTags: ["hopeful", "urban", "new beginnings", "optimistic", "modern"],
                     style: "Geometric",
                     drawType: "checkerboard"
+                },
+                // NEW ALGORITHMS AND CONCEPTS
+                {
+                    concept: "Dynamic diagonal lines conveying motion and progress.",
+                    palette: ["#FF6347", "#FFD700", "#00BFFF", "#7B68EE", "#ADFF2F"],
+                    moodTags: ["dynamic", "progress", "active", "forward-looking", "energetic"],
+                    style: "Abstract",
+                    drawType: "diagonal_lines"
+                },
+                {
+                    concept: "Concentric squares expanding from the center, representing focus and expansion.",
+                    palette: ["#6495ED", "#FFDAB9", "#90EE90", "#FF99CC", "#87CEEB"],
+                    moodTags: ["focused", "expanding", "meditative", "growth", "balanced"],
+                    style: "Geometric",
+                    drawType: "concentric_squares"
+                },
+                {
+                    concept: "A calm, almost cosmic noise pattern, suggesting peace in complexity.",
+                    palette: ["#DDA0DD", "#B0E0E6", "#6A5ACD", "#4682B4", "#778899"],
+                    moodTags: ["calm", "contemplative", "peaceful", "complex", "cosmic"],
+                    style: "Abstract",
+                    drawType: "noise_pattern"
                 }
             ], []);
 
@@ -210,6 +285,67 @@
                             for (let x = 0; x < canvasWidth; x += pixelSize) {
                                 const colorIndex = ((x / pixelSize) + (y / pixelSize)) % effectivePalette.length;
                                 addPixel(x, y, effectivePalette[colorIndex]);
+                            }
+                        }
+                        break;
+                    case "diagonal_lines":
+                        const numLines = Math.floor(canvasWidth / pixelSize / 4); // Number of diagonal segments
+                        for (let i = 0; i < numLines; i++) {
+                            const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const startX = i * pixelSize * 4;
+                            const startY = 0;
+                            for (let offset = 0; ; offset++) {
+                                const x = startX + offset * pixelSize;
+                                const y = startY + offset * pixelSize;
+                                if (x >= canvasWidth || y >= canvasHeight) break;
+                                addPixel(x, y, color);
+                            }
+                            const startX2 = 0;
+                            const startY2 = i * pixelSize * 4;
+                            for (let offset = 0; ; offset++) {
+                                const x = startX2 + offset * pixelSize;
+                                const y = startY2 + offset * pixelSize;
+                                if (x >= canvasWidth || y >= canvasHeight) break;
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "concentric_squares":
+                        const maxDim = Math.max(canvasWidth, canvasHeight);
+                        const numSquares = Math.floor(maxDim / (pixelSize * 4)); // Adjust spacing of squares
+                        for (let i = 0; i < numSquares; i++) {
+                            const color = effectivePalette[i % effectivePalette.length];
+                            const currentSize = (i + 1) * pixelSize * 4;
+                            const startX = (canvasWidth - currentSize) / 2;
+                            const startY = (canvasHeight - currentSize) / 2;
+
+                            if (startX < 0 || startY < 0) continue; // Avoid drawing outside canvas
+
+                            // Top horizontal line
+                            for (let x = startX; x < startX + currentSize; x += pixelSize) {
+                                addPixel(x, startY, color);
+                            }
+                            // Bottom horizontal line
+                            for (let x = startX; x < startX + currentSize; x += pixelSize) {
+                                addPixel(x, startY + currentSize - pixelSize, color);
+                            }
+                            // Left vertical line
+                            for (let y = startY; y < startY + currentSize; y += pixelSize) {
+                                addPixel(startX, y, color);
+                            }
+                            // Right vertical line
+                            for (let y = startY; y < startY + currentSize; y += pixelSize) {
+                                addPixel(startX + currentSize - pixelSize, y, color);
+                            }
+                        }
+                        break;
+                    case "noise_pattern":
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                if (Math.random() > 0.3) { // Density of noise
+                                    const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                                    addPixel(x, y, color, 0.5 + Math.random() * 0.5); // Vary alpha for "grainy" effect
+                                }
                             }
                         }
                         break;
@@ -303,13 +439,14 @@
                 }
             }, [positiveAffirmations]);
 
-            const generateArt = React.useCallback(async () => {
+            const generateArt = React.useCallback(async (isSurprise = false) => { // Added isSurprise parameter
                 setIsLoading(true);
                 setPixelArtDataUrl('');
                 setArtDescription('');
                 setErrorMessage('');
                 setLlmConcept('');
                 setLlmPalette([]);
+                setShowSuggestions(false); // Hide suggestions when generating art
 
                 try {
                     await new Promise(resolve => setTimeout(resolve, 500));
@@ -320,26 +457,31 @@
                         availableArt = availableArt.filter(item => item.style === selectedArtStyle);
                     }
 
-                    let bestMatch = null;
-                    let maxScore = -1;
-                    const lowerCaseMoodWords = moodInput.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+                    let finalArtData = null;
 
-                    if (lowerCaseMoodWords.length > 0) {
-                        for (const artItem of availableArt) {
-                            let currentScore = 0;
-                            for (const moodTag of artItem.moodTags) {
-                                if (lowerCaseMoodWords.includes(moodTag)) {
-                                    currentScore++;
+                    if (isSurprise || !moodInput.trim()) { // If Surprise button or mood input is empty
+                        finalArtData = availableArt[Math.floor(Math.random() * availableArt.length)];
+                    } else {
+                        let bestMatch = null;
+                        let maxScore = -1;
+                        const lowerCaseMoodWords = moodInput.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+
+                        if (lowerCaseMoodWords.length > 0) {
+                            for (const artItem of availableArt) {
+                                let currentScore = 0;
+                                for (const moodTag of artItem.moodTags) {
+                                    if (lowerCaseMoodWords.includes(moodTag)) {
+                                        currentScore++;
+                                    }
+                                }
+                                if (currentScore > maxScore) {
+                                    maxScore = currentScore;
+                                    bestMatch = artItem;
                                 }
                             }
-                            if (currentScore > maxScore) {
-                                maxScore = currentScore;
-                                bestMatch = artItem;
-                            }
                         }
+                        finalArtData = bestMatch || availableArt[Math.floor(Math.random() * availableArt.length)];
                     }
-
-                    const finalArtData = bestMatch || availableArt[Math.floor(Math.random() * availableArt.length)];
 
                     if (!finalArtData) {
                          setErrorMessage("No art concepts available for the selected style. Try a different mood or 'All' styles.");
@@ -367,6 +509,11 @@
                     setIsLoading(false);
                 }
             }, [moodInput, selectedArtStyle, selectedPixelSize, moodIntensity, positiveArtConceptsAndPalettes, drawPixelArt]);
+
+            const generateSurpriseArt = React.useCallback(() => {
+                setMoodInput(''); // Clear mood input to ensure random selection if not already empty
+                generateArt(true); // Call generateArt with the surprise flag
+            }, [generateArt]);
 
             const describeArt = React.useCallback(async () => {
                 setIsDescriptionLoading(true);
@@ -421,7 +568,39 @@
                 setSelectedArtStyle('All');
                 setSelectedPixelSize(10);
                 setMoodIntensity(50);
+                setShowSuggestions(false);
+                setFilteredSuggestions([]);
             }, []);
+
+            // Handle mood input changes for suggestions
+            const handleMoodInputChange = (e) => {
+                const value = e.target.value;
+                setMoodInput(value);
+                if (value.trim().length > 0) {
+                    const currentWords = value.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+                    const lastWord = currentWords[currentWords.length - 1];
+                    const newSuggestions = moodSuggestions.filter(suggestion =>
+                        suggestion.startsWith(lastWord) && !currentWords.includes(suggestion)
+                    );
+                    setFilteredSuggestions(newSuggestions);
+                    setShowSuggestions(newSuggestions.length > 0);
+                } else {
+                    setShowSuggestions(false);
+                }
+            };
+
+            // Handle clicking on a suggestion
+            const handleSuggestionClick = (suggestion) => {
+                const currentWords = moodInput.split(/\s+/).filter(word => word.length > 0);
+                if (currentWords.length > 0) {
+                    currentWords[currentWords.length - 1] = suggestion; // Replace last word
+                    setMoodInput(currentWords.join(' ') + ' '); // Add space for next word
+                } else {
+                    setMoodInput(suggestion + ' ');
+                }
+                setShowSuggestions(false); // Hide suggestions after selection
+                moodInputRef.current.focus(); // Keep focus on input
+            };
 
 
             return (
@@ -435,7 +614,7 @@
                         </p>
 
                         {/* Mood Input Section */}
-                        <div className="mb-6">
+                        <div className="mb-6 relative" ref={moodInputRef}> {/* Added ref here */}
                             <label htmlFor="mood" className="block text-gray-700 text-xl font-semibold mb-3">
                                 How are you feeling right now?
                             </label>
@@ -443,10 +622,34 @@
                                 id="mood"
                                 type="text"
                                 value={moodInput}
-                                onChange={(e) => setMoodInput(e.target.value)}
+                                onChange={handleMoodInputChange} // Use new handler
+                                onFocus={() => { // Show suggestions on focus if input has text
+                                    if (moodInput.trim().length > 0) {
+                                        const currentWords = moodInput.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+                                        const lastWord = currentWords[currentWords.length - 1];
+                                        const newSuggestions = moodSuggestions.filter(suggestion =>
+                                            suggestion.startsWith(lastWord) && !currentWords.includes(suggestion)
+                                        );
+                                        setFilteredSuggestions(newSuggestions);
+                                        setShowSuggestions(newSuggestions.length > 0);
+                                    }
+                                }}
                                 placeholder="e.g., Anxious, Happy, Tired, Creative..."
                                 className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition duration-200 text-lg text-gray-800"
                             />
+                            {showSuggestions && filteredSuggestions.length > 0 && (
+                                <ul className="suggestions-list absolute w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+                                    {filteredSuggestions.map((suggestion) => (
+                                        <li
+                                            key={suggestion}
+                                            className="p-3 text-left hover:bg-gray-100 cursor-pointer text-gray-700 text-base"
+                                            onClick={() => handleSuggestionClick(suggestion)}
+                                        >
+                                            {suggestion}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
 
                         {/* Mood Intensity Slider */}
@@ -495,9 +698,9 @@
                             <input
                                 id="pixel-size"
                                 type="range"
-                                min="2" /* Changed min to 2 */
+                                min="2"
                                 max="20"
-                                step="1" /* Changed step to 1 */
+                                step="1"
                                 value={selectedPixelSize}
                                 onChange={(e) => setSelectedPixelSize(parseInt(e.target.value))}
                                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
@@ -547,28 +750,52 @@
                             style={{ display: 'none' }}
                         ></canvas>
 
-                        {/* Generate Art Button */}
-                        <button
-                            onClick={generateArt}
-                            disabled={isLoading || isDrawingAnimating || !moodInput.trim()}
-                            className={`w-full py-4 px-6 rounded-lg text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105
-                                ${isLoading || isDrawingAnimating
-                                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed'
-                                    : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl'
-                                }`}
-                        >
-                            {(isLoading || isDrawingAnimating) ? (
-                                <span className="flex items-center justify-center">
-                                    <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    {isDrawingAnimating ? 'Drawing Pixel Art...' : 'Generating Pixel Art Concept...'}
-                                </span>
-                            ) : (
-                                'Generate Uplifting Pixel Art'
-                            )}
-                        </button>
+                        {/* Generate Art Buttons */}
+                        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
+                            <button
+                                onClick={() => generateArt(false)}
+                                disabled={isLoading || isDrawingAnimating || !moodInput.trim()}
+                                className={`flex-1 py-4 px-6 rounded-lg text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105
+                                    ${isLoading || isDrawingAnimating || !moodInput.trim()
+                                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed'
+                                        : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl'
+                                    }`}
+                            >
+                                {(isLoading || isDrawingAnimating) ? (
+                                    <span className="flex items-center justify-center">
+                                        <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        {isDrawingAnimating ? 'Drawing Pixel Art...' : 'Generating Concept...'}
+                                    </span>
+                                ) : (
+                                    'Generate My Mood Art'
+                                )}
+                            </button>
+                            <button
+                                onClick={generateSurpriseArt}
+                                disabled={isLoading || isDrawingAnimating}
+                                className={`flex-1 py-4 px-6 rounded-lg text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105
+                                    ${isLoading || isDrawingAnimating
+                                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed'
+                                        : 'bg-gradient-to-r from-orange-500 to-yellow-600 text-white shadow-lg hover:shadow-xl'
+                                    }`}
+                            >
+                                {(isLoading || isDrawingAnimating) ? (
+                                    <span className="flex items-center justify-center">
+                                        <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Surprising You...
+                                    </span>
+                                ) : (
+                                    '🎲 Surprise Me!'
+                                )}
+                            </button>
+                        </div>
+
 
                         {/* Error Message Display */}
                         {errorMessage && (
@@ -603,7 +830,7 @@
                                 <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
                                     {/* Regenerate Button */}
                                     <button
-                                        onClick={generateArt}
+                                        onClick={() => generateArt(false)}
                                         disabled={isLoading || isDrawingAnimating}
                                         className={`flex-1 py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105
                                             ${isLoading || isDrawingAnimating
