@@ -92,14 +92,14 @@
             ];
 
             // Mapping of HEX codes to common color names for descriptions
-            const hexToColorName = {
+            const hexToColorName = React.useMemo(() => ({
                 "#FFD700": "Gold",
                 "#FFA500": "Orange",
                 "#87CEEB": "Sky Blue",
                 "#90EE90": "Light Green",
                 "#FF69B4": "Hot Pink",
                 "#FFCC33": "Golden Yellow",
-                "#FF9900": "Orange", // Duplicate, but good to have explicit mapping
+                "#FF9900": "Orange",
                 "#66CCFF": "Light Blue",
                 "#99FF99": "Mint Green",
                 "#FFCCCC": "Light Pink",
@@ -108,7 +108,7 @@
                 "#66FF66": "Bright Green",
                 "#33CCFF": "Cerulean",
                 "#FF99CC": "Pink",
-                "#ADD8E6": "Light Blue", // Duplicate
+                "#ADD8E6": "Light Blue",
                 "#6495ED": "Cornflower Blue",
                 "#4682B4": "Steel Blue",
                 "#7B68EE": "Medium Slate Blue",
@@ -119,10 +119,10 @@
                 "#ADFF2F": "Green Yellow",
                 "#00BFFF": "Deep Sky Blue",
                 "#FF1493": "Deep Pink"
-            };
+            }), []); // Empty dependency array means this memoized value is created only once
 
             // --- Utility for drawing pixel art on Canvas ---
-            const drawPixelArt = (canvas, concept, palette) => {
+            const drawPixelArt = React.useCallback((canvas, concept, palette) => {
                 const ctx = canvas.getContext('2d');
                 const canvasWidth = canvas.width;
                 const canvasHeight = canvas.height;
@@ -179,12 +179,12 @@
 
                 // Convert canvas content to a data URL
                 return canvas.toDataURL('image/png');
-            };
+            }, []); // Empty dependency array means this function is memoized once
 
             /**
              * Generates a positive affirmation from a local list.
              */
-            const generateAffirmation = async () => {
+            const generateAffirmation = React.useCallback(async () => {
                 setIsAffirmationLoading(true);
                 setAffirmation('');
                 setErrorMessage('');
@@ -202,13 +202,12 @@
                 } finally {
                     setIsAffirmationLoading(false);
                 }
-            };
-
+            }, [positiveAffirmations]); // Dependency on positiveAffirmations
 
             /**
              * Generates the pixel art concept and palette locally, then draws the art.
              */
-            const generateArt = async () => {
+            const generateArt = React.useCallback(async () => {
                 setIsLoading(true);
                 setPixelArtDataUrl('');
                 setArtDescription('');
@@ -245,12 +244,12 @@
                 } finally {
                     setIsLoading(false);
                 }
-            };
+            }, [positiveArtConceptsAndPalettes, drawPixelArt]); // Dependencies on data and drawing function
 
             /**
              * Generates a description for the generated art locally.
              */
-            const describeArt = async () => {
+            const describeArt = React.useCallback(async () => {
                 setIsDescriptionLoading(true);
                 setArtDescription('');
                 setErrorMessage('');
@@ -276,7 +275,7 @@
                 } finally {
                     setIsDescriptionLoading(false);
                 }
-            };
+            }, [llmConcept, llmPalette, hexToColorName]); // Dependencies on LLM outputs and color name map
 
 
             return (
