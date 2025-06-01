@@ -179,6 +179,7 @@
                             }
                         }
                     } else { // Approximate circle (large rectangle for pixelated feel)
+                         const radius = Math.min(shapeWidth, shapeHeight) / 2; // Define radius here
                          for (let px = startX; px < startX + radius * 2; px += pixelSize) {
                             for (let py = startY; py < startY + radius * 2; py += pixelSize) {
                                 pixelsToDraw.push({ x: px, y: py, color: shapeColor, alpha: 0.6 + Math.random() * 0.3 });
