@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood-Based Pixel Art Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        /* This is crucial for maintaining the pixelated look when scaled */
+        .image-rendering-pixelated {
+            image-rendering: optimizeSpeed;             /* Older versions of FF */
+            image-rendering: -moz-crisp-edges;          /* FF 6.0+ */
+            image-rendering: -webkit-optimize-contrast; /* Safari, Chrome */
+            image-rendering: optimize-contrast;         /* CSS4 */
+            image-rendering: pixelated;                 /* CSS4 */
+            -ms-interpolation-mode: nearest-neighbor;   /* IE */
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        // Your React App component starts here
+        const App = () => {
+            const [moodInput, setMoodInput] = React.useState('');
+            const [pixelArtDataUrl, setPixelArtDataUrl] = React.useState(''); // Stores the generated pixel art as a data URL
+            const [isLoading, setIsLoading] = React.useState(false);
+            const [errorMessage, setErrorMessage] = React.useState('');
+            const [affirmation, setAffirmation] = React.useState('');
+            const [isAffirmationLoading, setIsAffirmationLoading] = React.useState(false);
+            const [llmConcept, setLlmConcept] = React.useState(''); // Stores the concept from LLM
+            const [llmPalette, setLlmPalette] = React.useState([]); // Stores the color palette from LLM
+            const [artDescription, setArtDescription] = React.useState(''); // New state for art description
+            const [isDescriptionLoading, setIsDescriptionLoading] = React.useState(false);
+
+            const canvasRef = React.useRef(null); // Reference to the canvas element
+
+            // --- Utility for drawing pixel art on Canvas ---
+            const drawPixelArt = (canvas, concept, palette) => {
+                const ctx = canvas.getContext('2d');
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                const pixelSize = 10; // Size of each "pixel" in the art
+
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+                // Ensure palette has at least one color for background
+                const effectivePalette = palette.length > 0 ? palette : ['#87CEEB']; // Default light blue if palette is empty
+
+                // Background - use a slightly lighter or dominant color from the palette
+                const backgroundColor = effectivePalette[0]; // Use first color for background
+                ctx.fillStyle = backgroundColor;
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                // Simple abstract pattern generation based on palette
+                // Iterate through "super-pixels"
+                for (let y = 0; y < canvasHeight; y += pixelSize) {
+                    for (let x = 0; x < canvasWidth; x += pixelSize) {
+                        // Randomly pick a color from the palette
+                        const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                        ctx.fillStyle = color;
+
+                        // Apply a random chance to draw, creating sparse or dense patterns
+                        if (Math.random() > 0.6) { // Draw a pixel with 40% chance
+                            ctx.fillRect(x, y, pixelSize, pixelSize);
+                        }
+                    }
+                }
+
+                // Add some larger, more prominent abstract shapes/swirls
+                const numShapes = Math.floor(Math.random() * 3) + 2; // 2 to 4 shapes
+                for (let i = 0; i < numShapes; i++) {
+                    const shapeColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                    ctx.fillStyle = shapeColor;
+                    ctx.globalAlpha = 0.6 + Math.random() * 0.3; // Semi-transparent
+
+                    const startX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                    const startY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                    const shapeWidth = Math.floor(Math.random() * (canvasWidth / pixelSize / 4) + 1) * pixelSize; // Max 1/4th width
+                    const shapeHeight = Math.floor(Math.random() * (canvasHeight / pixelSize / 4) + 1) * pixelSize; // Max 1/4th height
+
+                    if (Math.random() > 0.5) { // Draw a rectangle
+                        ctx.fillRect(startX, startY, shapeWidth, shapeHeight);
+                    } else { // Draw a "circle" (approximated by pixel blocks)
+                        const radius = Math.min(shapeWidth, shapeHeight) / 2;
+                        ctx.beginPath();
+                        // Drawing a pixelated circle is complex; simplest is a large rectangle
+                        // or a series of concentric squares reducing in size
+                        ctx.fillRect(startX, startY, radius * 2, radius * 2);
+                    }
+                }
+                ctx.globalAlpha = 1.0; // Reset alpha
+
+                // Convert canvas content to a data URL
+                return canvas.toDataURL('image/png');
+            };
+
+            /**
+             * Generates a positive affirmation based on the user's mood input.
+             * Uses the Gemini 2.0 Flash model.
+             */
+            const generateAffirmation = async () => {
+                setIsAffirmationLoading(true);
+                setAffirmation('');
+                setErrorMessage('');
+
+                try {
+                    const affirmationPayload = {
+                        contents: [
+                            {
+                                role: "user",
+                                parts: [
+                                    {
+                                        text: `Given the user's mood is described as "${moodInput}", generate a short, positive, and uplifting affirmation or a reflective thought. Keep it concise and inspiring.`
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+
+                    const apiKey = ""; // API key will be provided by the environment
+                    const affirmationApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(affirmationApiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(affirmationPayload)
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Affirmation API error: ${response.status} - ${errorText}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        setAffirmation(result.candidates[0].content.parts[0].text);
+                    } else {
+                        throw new Error('Failed to generate affirmation. AI response was empty or malformed.');
+                    }
+
+                } catch (error) {
+                    console.error('Error generating affirmation:', error);
+                    setErrorMessage(`Error generating affirmation: ${error.message || 'Something went wrong.'}`);
+                } finally {
+                    setIsAffirmationLoading(false);
+                }
+            };
+
+
+            /**
+             * Generates the pixel art.
+             * It first uses Gemini 2.0 Flash to get a concept and color palette,
+             * then uses the local algorithmic pixel art generator.
+             */
+            const generateArt = async () => {
+                setIsLoading(true);
+                setPixelArtDataUrl('');
+                setArtDescription(''); // Clear previous description
+                setErrorMessage('');
+                setLlmConcept(''); // Clear previous LLM outputs
+                setLlmPalette([]);
+
+                try {
+                    // Step 1: Use Gemini 2.0 Flash to generate a positive art concept and color palette
+                    // Instruct the LLM to output a JSON string for easy parsing
+                    const promptPayload = {
+                        contents: [
+                            {
+                                role: "user",
+                                parts: [
+                                    {
+                                        text: `Given the user's current mood is described as "${moodInput}", generate a JSON object with two fields: "concept" and "palette".
+                                        The "concept" should be a concise, positive, and uplifting idea for pixel art, focusing on vibrant, serene, or abstract beauty that evokes joy, peace, or optimism.
+                                        The "palette" should be an array of 3-5 HEX color codes (e.g., ["#FFD700", "#FFA500", "#87CEEB"]) selected to make the user feel positive based on color psychology.
+                                        Focus on colors like bright yellows (joy, optimism), oranges (enthusiasm, warmth), light blues (serenity, calm), greens (harmony, growth), and soft pinks (playfulness, compassion).
+                                        Example output:
+                                        {"concept": "A vibrant abstract pattern of swirling colors, evoking a sense of light and freedom.", "palette": ["#FFD700", "#FFA500", "#87CEEB", "#90EE90"]}`
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+
+                    const apiKey = "";
+                    const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const textResponse = await fetch(textApiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(promptPayload)
+                    });
+
+                    if (!textResponse.ok) {
+                        const errorText = await textResponse.text();
+                        throw new Error(`Concept/Palette API error: ${textResponse.status} - ${errorText}`);
+                    }
+
+                    const textResult = await textResponse.json();
+
+                    let concept = '';
+                    let palette = [];
+                    if (textResult.candidates && textResult.candidates.length > 0 &&
+                        textResult.candidates[0].content && textResult.candidates[0].content.parts &&
+                        textResult.candidates[0].content.parts.length > 0) {
+                        let rawLlmText = textResult.candidates[0].content.parts[0].text;
+
+                        // Remove markdown code block wrappers if present and trim whitespace
+                        rawLlmText = rawLlmText.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
+
+                        try {
+                            // Attempt to parse the LLM's response as JSON
+                            const llmOutput = JSON.parse(rawLlmText);
+                            concept = llmOutput.concept || "An uplifting abstract design.";
+                            palette = llmOutput.palette || [];
+
+                            // Basic validation for palette (ensure it's an array of strings)
+                            if (!Array.isArray(palette) || palette.some(c => typeof c !== 'string')) {
+                                console.warn("LLM returned malformed palette, using default.");
+                                palette = ['#87CEEB', '#90EE90', '#FFD700']; // Default positive palette
+                            }
+                        } catch (parseError) {
+                            console.warn("LLM response not valid JSON, using fallback concept/palette.");
+                            concept = rawLlmText; // Use raw text as concept if JSON parsing fails
+                            palette = ['#87CEEB', '#90EE90', '#FFD700']; // Default positive palette
+                            setErrorMessage("AI concept/palette might be malformed, using fallback. Error: " + parseError.message);
+                        }
+                        setLlmConcept(concept);
+                        setLlmPalette(palette);
+                    } else {
+                        throw new Error('Failed to generate concept/palette. AI response was empty or malformed.');
+                    }
+
+                    // Step 2: Generate pixel art on canvas using the concept and palette
+                    const canvas = canvasRef.current;
+                    if (canvas) {
+                        const dataUrl = drawPixelArt(canvas, concept, palette);
+                        setPixelArtDataUrl(dataUrl);
+                    } else {
+                        throw new Error('Canvas element not found. Please try generating art again.');
+                    }
+
+                } catch (error) {
+                    console.error('Error generating art:', error);
+                    setErrorMessage(`Error: ${error.message || 'Something went wrong during art generation. Please check your network connection or try again later.'}`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            /**
+             * Generates a description for the generated art based on the LLM's concept and palette.
+             * Uses the Gemini 2.0 Flash model.
+             */
+            const describeArt = async () => {
+                setIsDescriptionLoading(true);
+                setArtDescription('');
+                setErrorMessage('');
+
+                try {
+                    if (!llmConcept || llmPalette.length === 0) {
+                        throw new Error('No art concept or palette available to describe. Please generate art first.');
+                    }
+
+                    const descriptionPayload = {
+                        contents: [
+                            {
+                                role: "user",
+                                parts: [
+                                    {
+                                        text: `Given the pixel art concept was: "${llmConcept}" and the colors used were: ${llmPalette.join(', ')}. Provide a concise, positive, and inspiring interpretation or description of the art. Focus on the uplifting aspects and potential feelings it evokes.`
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+
+                    const apiKey = "";
+                    const descriptionApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(descriptionApiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(descriptionPayload)
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Art description API error: ${response.status} - ${errorText}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        setArtDescription(result.candidates[0].content.parts[0].text);
+                    } else {
+                        throw new Error('Failed to generate art description. AI response was empty or malformed.');
+                    }
+
+                } catch (error) {
+                    console.error('Error describing art:', error);
+                    setErrorMessage(`Error describing art: ${error.message || 'Something went wrong.'}`);
+                } finally {
+                    setIsDescriptionLoading(false);
+                }
+            };
+
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-purple-100 to-blue-200 flex items-center justify-center p-4 font-sans">
+                    <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl text-center border border-gray-200">
+                        <h1 className="text-4xl font-extrabold text-gray-800 mb-6 tracking-tight">
+                            Mood-Inspired Pixel Art
+                        </h1>
+                        <p className="text-gray-600 mb-8 text-lg leading-relaxed">
+                            Tell me how you're feeling, and I'll create a unique piece of uplifting pixel art with colors chosen to boost your mood!
+                        </p>
+
+                        {/* Mood Input Section */}
+                        <div className="mb-8">
+                            <label htmlFor="mood" className="block text-gray-700 text-xl font-semibold mb-3">
+                                How are you feeling right now?
+                            </label>
+                            <input
+                                id="mood"
+                                type="text"
+                                value={moodInput}
+                                onChange={(e) => setMoodInput(e.target.value)}
+                                placeholder="e.g., Anxious, Happy, Tired, Creative..."
+                                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition duration-200 text-lg text-gray-800"
+                            />
+                        </div>
+
+                        {/* Affirmation Button */}
+                        <button
+                            onClick={generateAffirmation}
+                            disabled={isAffirmationLoading || !moodInput.trim()}
+                            className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 mb-4
+                                ${isAffirmationLoading
+                                    ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-100 cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-green-500 to-teal-600 text-white shadow-md hover:shadow-lg'
+                                }`}
+                        >
+                            {isAffirmationLoading ? (
+                                <span className="flex items-center justify-center">
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Generating Affirmation...
+                                </span>
+                            ) : (
+                                '✨ Get Affirmation'
+                            )}
+                        </button>
+
+                        {/* Display Affirmation */}
+                        {affirmation && (
+                            <div className="mt-4 mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg text-left italic">
+                                <p className="font-semibold">Your Affirmation:</p>
+                                <p>"{affirmation}"</p>
+                            </div>
+                        )}
+
+                        {/* Canvas element is now always rendered, but hidden */}
+                        <canvas
+                            ref={canvasRef}
+                            width="400"
+                            height="400"
+                            style={{ display: 'none' }}
+                        ></canvas>
+
+                        {/* Generate Art Button */}
+                        <button
+                            onClick={generateArt}
+                            disabled={isLoading || !moodInput.trim()}
+                            className={`w-full py-4 px-6 rounded-lg text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105
+                                ${isLoading
+                                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl'
+                                }`}
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center justify-center">
+                                    <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Generating Pixel Art...
+                                </span>
+                            ) : (
+                                'Generate Uplifting Pixel Art'
+                            )}
+                        </button>
+
+                        {/* Error Message Display */}
+                        {errorMessage && (
+                            <div className="mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-left">
+                                <p className="font-semibold">Oops! Something went wrong:</p>
+                                <p>{errorMessage}</p>
+                            </div>
+                        )}
+
+                        {/* Generated Art Display */}
+                        {pixelArtDataUrl && (
+                            <div className="mt-10 border-t border-gray-200 pt-8">
+                                <h2 className="text-3xl font-bold text-gray-800 mb-6">Your Uplifting Pixel Art</h2>
+                                <div className="bg-gray-100 p-2 rounded-lg shadow-inner flex justify-center">
+                                    <img
+                                        src={pixelArtDataUrl}
+                                        alt="Generated Pixel Art"
+                                        className="w-full h-auto max-w-sm rounded-lg shadow-md image-rendering-pixelated" // CSS for pixelation
+                                        style={{ imageRendering: 'pixelated' }} // Ensure pixelated look
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "https://placehold.co/400x400/FF0000/FFFFFF?text=Pixel+Art+Load+Error";
+                                            setErrorMessage("Failed to load generated pixel art. It might be corrupted or missing.");
+                                        }}
+                                    />
+                                </div>
+                                <p className="text-gray-500 text-sm mt-4">
+                                    This art was generated to evoke positive feelings using a palette based on color psychology.
+                                </p>
+
+                                {/* Describe Art Button */}
+                                <button
+                                    onClick={describeArt}
+                                    disabled={isDescriptionLoading || !llmConcept || llmPalette.length === 0}
+                                    className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 mt-6
+                                        ${isDescriptionLoading
+                                            ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-100 cursor-not-allowed'
+                                            : 'bg-gradient-to-r from-indigo-500 to-purple-700 text-white shadow-md hover:shadow-lg'
+                                        }`}
+                                >
+                                    {isDescriptionLoading ? (
+                                        <span className="flex items-center justify-center">
+                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Describing Art...
+                                        </span>
+                                    ) : (
+                                        '✨ Describe Pixel Art'
+                                    )}
+                                </button>
+
+                                {/* Display Art Description */}
+                                {artDescription && (
+                                    <div className="mt-4 p-4 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg text-left">
+                                        <p className="font-semibold">AI Art Description:</p>
+                                        <p>{artDescription}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Render the App component into the 'root' div
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
