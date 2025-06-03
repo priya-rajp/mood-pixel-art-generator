@@ -17,12 +17,280 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        // This is your application code that uses React
-        const App = () => {
-            return <h1>Hello React!</h1>;
-        };
+        const API_BASE_URL = 'https://ai-art-generator-mood-based.azurewebsites.net/api';
+
+const colors = [
+    // Your colors array
+    "#FF0000", "#FF4500", "#FFA500", "#FFFF00", "#9ACD32", "#00FF00", "#32CD32", "#008000", "#00FFFF", "#00BFFF",
+    "#1E90FF", "#0000FF", "#8A2BE2", "#4B0082", "#8B008B", "#FF00FF", "#FF69B4", "#FF1493", "#C71585", "#DC143C",
+    "#A52A2A", "#8B4513", "#D2B48C", "#F5DEB3", "#DDA0DD", "#EE82EE", "#BA55D3", "#9370DB", "#6A5ACD", "#7B68EE",
+    "#ADFF2F", "#7FFF00", "#7CFC00", "#00FF7F", "#3CB371", "#2E8B57", "#20B2AA", "#008B8B", "#48D1CC", "#66CDAA",
+    "#AFEEEE", "#B0E0E6", "#ADD8E6", "#87CEEB", "#6495ED", "#4682B4", "#5F9EA0", "#B0C4DE", "#778899", "#708090",
+    "#C0C0C0", "#A9A9A9", "#808080", "#696969", "#000000", "#FFFFFF", "#F5F5DC", "#FAEBD7", "#FFE4C4", "#D2691E",
+    "#CD5C5C", "#F08080", "#FA8072", "#E9967A", "#FF6347", "#FF7F50", "#FFD700", "#DAA520", "#BDB76B", "#ADFF2F",
+    "#F0E68C", "#8B4513", "#A0522D", "#D2B48C", "#BC8F8F", "#CD853F", "#F4A460", "#DEB887", "#A9A9A9", "#808080"
+];
+
+
+const PixelArtCanvas = React.memo(({ pixelData, canvasSize, pixelSize }) => {
+    const canvasRef = React.useRef(null);
+
+    React.useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas before drawing
+
+        pixelData.forEach(pixel => {
+            ctx.fillStyle = pixel.color;
+            ctx.fillRect(pixel.x * pixelSize, pixel.y * pixelSize, pixelSize, pixelSize);
+        });
+    }, [pixelData, canvasSize, pixelSize]); // Redraw when pixelData or size changes
+
+    return (
+        <canvas
+            ref={canvasRef}
+            width={canvasSize}
+            height={canvasSize}
+            className="border border-gray-300 shadow-lg image-rendering-pixelated"
+        />
+    );
+});
+
+
+const App = () => {
+    const [mood, setMood] = React.useState('');
+    const [pixelData, setPixelData] = React.useState([]);
+    const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState(null);
+    const [artDescription, setArtDescription] = React.useState('');
+    const [showDescription, setShowDescription] = React.useState(false);
+    const [suggestions, setSuggestions] = React.useState([]);
+    const [showSuggestions, setShowSuggestions] = React.useState(false);
+
+    const canvasSize = 400; // Total canvas dimension
+    const pixelGridSize = 20; // e.g., 20x20 pixels
+    const pixelSize = canvasSize / pixelGridSize; // Size of each pixel on the canvas
+
+    const moodSuggestions = React.useMemo(() => [
+        'happy', 'sad', 'angry', 'calm', 'excited', 'peaceful', 'mysterious', 'vibrant', 'gloomy', 'joyful',
+        'serene', 'energetic', 'dreamy', 'chaotic', 'melancholy', 'whimsical', 'futuristic', 'ancient', 'cozy', 'eerie'
+    ], []);
+
+    React.useEffect(() => {
+        if (mood.length > 0) {
+            const filteredSuggestions = moodSuggestions.filter(s =>
+                s.toLowerCase().startsWith(mood.toLowerCase())
+            );
+            setSuggestions(filteredSuggestions);
+            setShowSuggestions(true);
+        } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+        }
+    }, [mood, moodSuggestions]);
+
+    const generatePixelArt = async () => {
+        setLoading(true);
+        setError(null);
+        setPixelData([]);
+        setArtDescription(''); // Clear previous description
+        setShowDescription(false); // Hide description section
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/generate_pixel_art`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ mood, colors, grid_size: pixelGridSize }), // Pass grid_size
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const data = await response.json();
+            setPixelData(data.pixel_art_data);
+        } catch (err) {
+            console.error("Error generating pixel art:", err);
+            setError(`Failed to generate pixel art: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const describePixelArt = async () => {
+        if (pixelData.length === 0) {
+            setError("Generate pixel art first before describing it.");
+            return;
+        }
+
+        setLoading(true); // Reuse loading state for description
+        setError(null);
+        setArtDescription('');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/describe_pixel_art`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ pixel_art_data: pixelData }),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const data = await response.json();
+            setArtDescription(data.description);
+            setShowDescription(true);
+        } catch (err) {
+            console.error("Error describing pixel art:", err);
+            setError(`Failed to describe pixel art: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const resetApp = () => {
+        setMood('');
+        setPixelData([]);
+        setLoading(false);
+        setError(null);
+        setArtDescription('');
+        setShowDescription(false);
+        setSuggestions([]);
+        setShowSuggestions(false);
+    };
+
+    const handleMoodChange = (e) => {
+        setMood(e.target.value);
+    };
+
+    const handleSuggestionClick = (suggestion) => {
+        setMood(suggestion);
+        setShowSuggestions(false);
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-100 to-indigo-200 flex items-center justify-center p-4">
+            <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl text-center border border-gray-100">
+                <h1 className="text-4xl font-bold text-gray-800 mb-6 flex items-center justify-center">
+                    🎨 Mood Pixel Art Generator
+                </h1>
+
+                <div className="space-y-6">
+                    {/* Mood Input */}
+                    <div className="relative">
+                        <input
+                            type="text"
+                            className="w-full p-3 pr-10 border border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 shadow-sm"
+                            placeholder="Enter a mood (e.g., 'happy', 'calm', 'mysterious')"
+                            value={mood}
+                            onChange={handleMoodChange}
+                            onFocus={() => mood.length > 0 && setSuggestions(moodSuggestions.filter(s => s.toLowerCase().startsWith(mood.toLowerCase())))}
+                            onBlur={() => setTimeout(() => setShowSuggestions(false), 100)} // Delay hiding to allow click
+                        />
+                        {showSuggestions && suggestions.length > 0 && (
+                            <ul className="absolute left-0 right-0 mt-1 bg-white shadow-lg rounded-b-lg suggestions-list z-10">
+                                {suggestions.map((s) => (
+                                    <li
+                                        key={s}
+                                        className="p-3 text-lg text-left text-gray-700 hover:bg-purple-100 cursor-pointer"
+                                        onMouseDown={() => handleSuggestionClick(s)} // Use onMouseDown to prevent blur
+                                    >
+                                        {s}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    {/* Generate Button */}
+                    <button
+                        onClick={generatePixelArt}
+                        disabled={loading || !mood.trim()}
+                        className="w-full py-3 px-6 rounded-lg text-lg font-bold bg-purple-600 text-white shadow-md hover:bg-purple-700 transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    >
+                        {loading && pixelData.length === 0 ? (
+                            <span className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Generating...
+                            </span>
+                        ) : (
+                            '🚀 Generate Pixel Art'
+                        )}
+                    </button>
+
+                    {/* Error Display */}
+                    {error && (
+                        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-left" role="alert">
+                            <p className="font-semibold">Error:</p>
+                            <p>{error}</p>
+                        </div>
+                    )}
+
+                    {/* Pixel Art Display */}
+                    {pixelData.length > 0 && (
+                        <div className="mt-6 flex flex-col items-center">
+                            <PixelArtCanvas
+                                pixelData={pixelData}
+                                canvasSize={canvasSize}
+                                pixelSize={pixelSize}
+                            />
+                            {/* Describe Art Button */}
+                            <button
+                                onClick={describePixelArt}
+                                disabled={loading}
+                                className="w-full py-3 px-6 rounded-lg text-lg font-bold mt-4 bg-blue-600 text-white shadow-md hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
+                                {loading && showDescription ? (
+                                    <span className="flex items-center">
+                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Describing Art...
+                                    </span>
+                                ) : (
+                                    '✨ Describe Pixel Art'
+                                )}
+                            </button>
+
+                            {/* Display Art Description */}
+                            {artDescription && (
+                                <div className="mt-4 p-4 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg text-left">
+                                    <p className="font-semibold">AI Art Description:</p>
+                                    <p>{artDescription}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {/* Reset Button */}
+                    <button
+                        onClick={resetApp}
+                        className="w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 mt-8 bg-gray-200 text-gray-700 shadow-md hover:shadow-lg hover:bg-gray-300"
+                    >
+                        Reset App
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
         // This part will cause the error if React is null
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+       
     </script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </body>
