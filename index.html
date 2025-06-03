@@ -57,49 +57,6 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <script type="text/babel">
-        const pixelPatterns = React.useMemo(() => ({
-                star: [ // 3x3 star
-                    [0, 1, 0],
-                    [1, 1, 1],
-                    [0, 1, 0]
-                ],
-                flower: [ // 5x5 simple flower
-                    [0, 1, 0, 1, 0],
-                    [1, 1, 1, 1, 1],
-                    [0, 1, 1, 1, 0],
-                    [1, 1, 1, 1, 1],
-                    [0, 1, 0, 1, 0]
-                ],
-                // Or a more classic flower:
-                flower2: [
-                    [0, 0, 1, 0, 0],
-                    [0, 1, 1, 1, 0],
-                    [1, 1, 1, 1, 1],
-                    [0, 1, 1, 1, 0],
-                    [0, 0, 1, 0, 0]
-                ],
-                smallTree: [ // 5x5 simple tree
-                    [0, 0, 1, 0, 0],
-                    [0, 1, 1, 1, 0],
-                    [1, 1, 1, 1, 1],
-                    [0, 0, 1, 0, 0],
-                    [0, 0, 1, 0, 0]
-                ],
-                // A very simple pixel bird (more like a flying V)
-                bird: [ // 3x3
-                    [0, 0, 0],
-                    [1, 0, 1],
-                    [0, 1, 0]
-                ],
-                // A very simple pixel bird (more like a flying V) - 5x5
-                bird2: [
-                    [0, 0, 0, 0, 0],
-                    [0, 1, 0, 1, 0],
-                    [1, 0, 1, 0, 1],
-                    [0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0]
-                ]
-            }), []);
         const App = () => {
             const [moodInput, setMoodInput] = React.useState('');
             const [pixelArtDataUrl, setPixelArtDataUrl] = React.useState('');
@@ -184,28 +141,28 @@
                     palette: ["#FFCC33", "#FF9900", "#66CCFF", "#99FF99", "#FFCCCC"],
                     moodTags: ["calm", "peaceful", "hopeful", "relaxed", "serene", "tranquil", "new beginnings"],
                     style: "Nature",
-                    drawType: "layered_landscape" // **NEW: Use layered_landscape for serene scenes**
+                    drawType: "horizontal_stripes"
                 },
                 {
                     concept: "A cheerful, pixelated garden bursting with happy flowers and bright skies.",
                     palette: ["#FFCC00", "#FF6666", "#66FF66", "#33CCFF", "#FF99CC"],
                     moodTags: ["happy", "joyful", "playful", "bright", "lively", "nature"],
                     style: "Nature",
-                    drawType: "scattered_elements" // **NEW: Use scattered_elements for flowers**
+                    drawType: "random_pixels"
                 },
                 {
-                    concept: "An uplifting abstract design with harmonious triangular and circular forms.", // Concept updated
+                    concept: "An uplifting abstract design with geometric shapes and harmonious gradients.",
                     palette: ["#ADD8E6", "#87CEEB", "#6495ED", "#4682B4", "#7B68EE"],
                     moodTags: ["calm", "focused", "thoughtful", "balanced", "structured", "harmonious"],
                     style: "Geometric",
-                    drawType: "geometric_patterns" // **NEW: Use geometric_patterns for diverse shapes**
+                    drawType: "checkerboard"
                 },
                 {
                     concept: "A playful scene of stars twinkling in a peaceful night sky, full of wonder.",
                     palette: ["#F0E68C", "#DAA520", "#4682B4", "#7B68EE", "#DDA0DD"],
                     moodTags: ["dreamy", "wonder", "calm", "curious", "imaginative", "peaceful"],
-                    style: "Nature", // Changed style to Nature for starry night
-                    drawType: "scattered_elements" // **NEW: Use scattered_elements specifically for stars**
+                    style: "Abstract",
+                    drawType: "random_pixels"
                 },
                 {
                     concept: "A burst of positive energy, represented by dynamic lines and contrasting bright colors.",
@@ -219,22 +176,23 @@
                     palette: ["#87CEFA", "#6A5ACD", "#B0E0E6", "#FFDAB9", "#F08080"],
                     moodTags: ["peaceful", "calm", "tranquil", "renewed", "restful", "serene"],
                     style: "Nature",
-                    drawType: "organic_blobs" // Keep organic blobs for water/sky
+                    drawType: "horizontal_stripes"
                 },
                 {
-                    concept: "Abstract patterns reminiscent of a blooming spring, vibrant and fresh, with hints of nature.",
+                    concept: "Abstract patterns reminiscent of a blooming spring, vibrant and fresh.",
                     palette: ["#7CFC00", "#32CD32", "#FFC0CB", "#FFD700", "#9370DB"],
                     moodTags: ["fresh", "growth", "happy", "vibrant", "new beginnings", "natural"],
-                    style: "Nature",
-                    drawType: "layered_landscape" // Can also use for spring scenes with flowers/trees
+                    style: "Abstract",
+                    drawType: "random_pixels"
                 },
                  {
-                    concept: "A cityscape at dawn, with hopeful light breaking through, composed of bold geometric forms.",
+                    concept: "A cityscape at dawn, with hopeful light breaking through.",
                     palette: ["#A9A9A9", "#778899", "#ADD8E6", "#FFD700", "#FF6347"],
                     moodTags: ["hopeful", "urban", "new beginnings", "optimistic", "modern"],
                     style: "Geometric",
-                    drawType: "geometric_patterns" // **NEW: Use geometric_patterns for cityscapes**
+                    drawType: "checkerboard"
                 },
+                // NEW ALGORITHMS AND CONCEPTS
                 {
                     concept: "Dynamic diagonal lines conveying motion and progress.",
                     palette: ["#FF6347", "#FFD700", "#00BFFF", "#7B68EE", "#ADFF2F"],
@@ -295,7 +253,7 @@
                 const effectivePalette = sortedPalette.slice(0, Math.max(1, Math.floor(sortedPalette.length * (moodIntensity / 100))));
                 if (effectivePalette.length === 0) effectivePalette.push(sortedPalette[0]);
 
-                const backgroundColor = effectivePalette[0]; // Or choose another color for background
+                const backgroundColor = effectivePalette[0];
                 ctx.fillStyle = backgroundColor;
                 ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
@@ -305,20 +263,8 @@
                     pixelsToDraw.push({ x, y, color, alpha });
                 };
 
-                // Helper function to draw a pattern
-                const drawPattern = (pattern, startX, startY, color, patternPixelSize = pixelSize) => {
-                    for (let py = 0; py < pattern.length; py++) {
-                        for (let px = 0; px < pattern[py].length; px++) {
-                            if (pattern[py][px] === 1) {
-                                addPixel(startX + px * patternPixelSize, startY + py * patternPixelSize, color);
-                            }
-                        }
-                    }
-                };
-
                 switch (drawType) {
                     case "horizontal_stripes":
-                        // ... (keep existing code)
                         for (let y = 0; y < canvasHeight; y += pixelSize) {
                             const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
                             for (let x = 0; x < canvasWidth; x += pixelSize) {
@@ -327,7 +273,6 @@
                         }
                         break;
                     case "vertical_stripes":
-                        // ... (keep existing code)
                         for (let x = 0; x < canvasWidth; x += pixelSize) {
                             const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
                             for (let y = 0; y < canvasHeight; y += pixelSize) {
@@ -336,7 +281,6 @@
                         }
                         break;
                     case "checkerboard":
-                        // ... (keep existing code)
                         for (let y = 0; y < canvasHeight; y += pixelSize) {
                             for (let x = 0; x < canvasWidth; x += pixelSize) {
                                 const colorIndex = ((x / pixelSize) + (y / pixelSize)) % effectivePalette.length;
@@ -345,8 +289,7 @@
                         }
                         break;
                     case "diagonal_lines":
-                        // ... (keep existing code)
-                        const numLines = Math.floor(canvasWidth / pixelSize / 4);
+                        const numLines = Math.floor(canvasWidth / pixelSize / 4); // Number of diagonal segments
                         for (let i = 0; i < numLines; i++) {
                             const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
                             const startX = i * pixelSize * 4;
@@ -368,219 +311,80 @@
                         }
                         break;
                     case "concentric_squares":
-                        // ... (keep existing code)
                         const maxDim = Math.max(canvasWidth, canvasHeight);
-                        const numSquares = Math.floor(maxDim / (pixelSize * 4));
+                        const numSquares = Math.floor(maxDim / (pixelSize * 4)); // Adjust spacing of squares
                         for (let i = 0; i < numSquares; i++) {
                             const color = effectivePalette[i % effectivePalette.length];
                             const currentSize = (i + 1) * pixelSize * 4;
                             const startX = (canvasWidth - currentSize) / 2;
                             const startY = (canvasHeight - currentSize) / 2;
 
-                            if (startX < 0 || startY < 0) continue;
+                            if (startX < 0 || startY < 0) continue; // Avoid drawing outside canvas
 
+                            // Top horizontal line
                             for (let x = startX; x < startX + currentSize; x += pixelSize) {
                                 addPixel(x, startY, color);
                             }
+                            // Bottom horizontal line
                             for (let x = startX; x < startX + currentSize; x += pixelSize) {
                                 addPixel(x, startY + currentSize - pixelSize, color);
                             }
+                            // Left vertical line
                             for (let y = startY; y < startY + currentSize; y += pixelSize) {
                                 addPixel(startX, y, color);
                             }
+                            // Right vertical line
                             for (let y = startY; y < startY + currentSize; y += pixelSize) {
                                 addPixel(startX + currentSize - pixelSize, y, color);
                             }
                         }
                         break;
                     case "noise_pattern":
-                        // ... (keep existing code)
                         for (let y = 0; y < canvasHeight; y += pixelSize) {
                             for (let x = 0; x < canvasWidth; x += pixelSize) {
-                                if (Math.random() > 0.3) {
+                                if (Math.random() > 0.3) { // Density of noise
                                     const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-                                    addPixel(x, y, color, 0.5 + Math.random() * 0.5);
+                                    addPixel(x, y, color, 0.5 + Math.random() * 0.5); // Vary alpha for "grainy" effect
                                 }
                             }
                         }
                         break;
-                    case "organic_blobs":
-                        // ... (keep existing code)
-                        const numBlobs = Math.floor(Math.random() * 5) + 3;
-                        for (let i = 0; i < numBlobs; i++) {
-                            const blobColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-                            const centerX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
-                            const centerY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
-                            const maxRadius = Math.floor(Math.random() * (Math.min(canvasWidth, canvasHeight) / pixelSize / 6) + 3) * pixelSize;
-
-                            for (let y = -maxRadius; y <= maxRadius; y += pixelSize) {
-                                for (let x = -maxRadius; x <= maxRadius; x += pixelSize) {
-                                    const dist = Math.sqrt(x * x + y * y);
-                                    if (dist < maxRadius && Math.random() > (dist / maxRadius) * 0.5) {
-                                        addPixel(centerX + x, centerY + y, blobColor, 0.7 + Math.random() * 0.3);
-                                    }
-                                }
-                            }
-                        }
-                        // Add some scattered elements for ground/sky fill
-                        for (let y = 0; y < canvasHeight; y += pixelSize) {
-                            for (let x = 0; x < canvasWidth; x += pixelSize) {
-                                if (Math.random() > 0.9) {
-                                    const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-                                    addPixel(x, y, color, 0.3 + Math.random() * 0.4);
-                                }
-                            }
-                        }
-                        break;
-                    case "scattered_elements": // Enhanced to use patterns
-                        const elementTypes = ['star', 'flower', 'bird'];
-                        const numElements = Math.floor(Math.random() * 10) + 5; // 5 to 15 elements
-                        for (let i = 0; i < numElements; i++) {
-                            const type = elementTypes[Math.floor(Math.random() * elementTypes.length)];
-                            const pattern = pixelPatterns[type];
-                            if (!pattern) continue; // Should not happen with valid types
-
-                            const patternWidth = pattern[0].length * pixelSize;
-                            const patternHeight = pattern.length * pixelSize;
-
-                            const startX = Math.floor(Math.random() * ((canvasWidth - patternWidth) / pixelSize)) * pixelSize;
-                            const startY = Math.floor(Math.random() * ((canvasHeight - patternHeight) / pixelSize)) * pixelSize;
-                            const elementColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-
-                            drawPattern(pattern, startX, startY, elementColor);
-                        }
-                        // Also add some general random background pixels for texture
-                        for (let y = 0; y < canvasHeight; y += pixelSize) {
-                            for (let x = 0; x < canvasWidth; x += pixelSize) {
-                                if (Math.random() > 0.95) { // Very low density
-                                    const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-                                    addPixel(x, y, color, 0.2 + Math.random() * 0.3);
-                                }
-                            }
-                        }
-                        break;
-                    case "layered_landscape": // New drawing type for trees/gardens
-                        const groundHeight = Math.floor(canvasHeight * (0.3 + Math.random() * 0.3)); // 30-60% of canvas height
-                        const skyColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)]; // Sky color
-                        const groundColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)]; // Ground color (different from sky)
-
-                        // Ensure groundColor is distinct enough from skyColor if possible
-                        let tempGroundColor = groundColor;
-                        if (effectivePalette.length > 1 && tempGroundColor === skyColor) {
-                            tempGroundColor = effectivePalette[(effectivePalette.indexOf(skyColor) + 1) % effectivePalette.length];
-                        }
-                        const finalGroundColor = tempGroundColor;
-
-                        // Draw sky
-                        for (let y = 0; y < canvasHeight - groundHeight; y += pixelSize) {
-                            for (let x = 0; x < canvasWidth; x += pixelSize) {
-                                addPixel(x, y, skyColor);
-                            }
-                        }
-                        // Draw ground
-                        for (let y = canvasHeight - groundHeight; y < canvasHeight; y += pixelSize) {
-                            for (let x = 0; x < canvasWidth; x += pixelSize) {
-                                addPixel(x, y, finalGroundColor);
-                            }
-                        }
-
-                        // Add trees
-                        const numTrees = Math.floor(Math.random() * 4) + 2; // 2 to 5 trees
-                        for (let i = 0; i < numTrees; i++) {
-                            const treePattern = pixelPatterns.smallTree;
-                            const treeWidth = treePattern[0].length * pixelSize;
-                            const treeHeight = treePattern.length * pixelSize;
-                            const treeX = Math.floor(Math.random() * ((canvasWidth - treeWidth) / pixelSize)) * pixelSize;
-                            const treeY = (canvasHeight - groundHeight) + Math.floor(Math.random() * (groundHeight / pixelSize / 2)) * pixelSize - treeHeight; // Place trees on ground
-
-                            const treeColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-                            drawPattern(treePattern, treeX, treeY, treeColor);
-                        }
-
-                        // Add small scattered elements on the ground (e.g., flowers, grass clumps)
-                        const numGroundElements = Math.floor(Math.random() * 15) + 5;
-                        for (let i = 0; i < numGroundElements; i++) {
-                            const elementPattern = Math.random() > 0.5 ? pixelPatterns.flower : pixelPatterns.flower2;
-                            const elemWidth = elementPattern[0].length * pixelSize;
-                            const elemHeight = elementPattern.length * pixelSize;
-                            const elemX = Math.floor(Math.random() * ((canvasWidth - elemWidth) / pixelSize)) * pixelSize;
-                            const elemY = canvasHeight - groundHeight + Math.floor(Math.random() * ((groundHeight - elemHeight) / pixelSize)) * pixelSize;
-                            const elemColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-                            drawPattern(elementPattern, elemX, elemY, elemColor);
-                        }
-                        break;
-                    case "geometric_patterns": // New drawing type for more diverse geometric shapes
-                        const shapes = ['rectangle', 'triangle', 'circle'];
-                        const numGeometricShapes = Math.floor(Math.random() * 8) + 5; // 5 to 12 shapes
-                        for (let i = 0; i < numGeometricShapes; i++) {
-                            const shapeType = shapes[Math.floor(Math.random() * shapes.length)];
-                            const shapeColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-                            const size1 = Math.floor(Math.random() * (canvasWidth / pixelSize / 4) + 2) * pixelSize;
-                            const size2 = Math.floor(Math.random() * (canvasHeight / pixelSize / 4) + 2) * pixelSize;
-                            const startX = Math.floor(Math.random() * ((canvasWidth - size1) / pixelSize)) * pixelSize;
-                            const startY = Math.floor(Math.random() * ((canvasHeight - size2) / pixelSize)) * pixelSize;
-
-                            if (shapeType === 'rectangle') {
-                                for (let py = 0; py < size2; py += pixelSize) {
-                                    for (let px = 0; px < size1; px += pixelSize) {
-                                        addPixel(startX + px, startY + py, shapeColor);
-                                    }
-                                }
-                            } else if (shapeType === 'triangle') {
-                                // Draw an isosceles triangle
-                                for (let py = 0; py < size2; py += pixelSize) {
-                                    const currentWidth = (py / size2) * size1;
-                                    const startPx = startX + (size1 - currentWidth) / 2;
-                                    for (let px = 0; px < currentWidth; px += pixelSize) {
-                                        addPixel(startPx + px, startY + py, shapeColor);
-                                    }
-                                }
-                            } else if (shapeType === 'circle') {
-                                const radius = Math.min(size1, size2) / 2;
-                                const circleCenterX = startX + size1 / 2;
-                                const circleCenterY = startY + size2 / 2;
-                                for (let px = -radius; px <= radius; px += pixelSize) {
-                                    for (let py = -radius; py <= radius; py += pixelSize) {
-                                        if (Math.sqrt(px * px + py * py) <= radius) {
-                                            addPixel(circleCenterX + px, circleCenterY + py, shapeColor);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        break;
-
                     case "random_pixels":
-                    default: // Default to random pixels with potential small patterns
+                    default:
                         for (let y = 0; y < canvasHeight; y += pixelSize) {
                             for (let x = 0; x < canvasWidth; x += pixelSize) {
                                 const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-                                if (Math.random() > 0.7) { // Lower density to allow for patterns
+                                if (Math.random() > 0.6) {
                                     addPixel(x, y, color);
                                 }
                             }
                         }
-                        // Add some scattered mini-patterns even in random_pixels
-                        const numSmallPatterns = Math.floor(Math.random() * 5) + 1; // 1 to 5 small patterns
-                        const availableSmallPatterns = ['star', 'bird']; // Only small ones for this mode
-                        for (let i = 0; i < numSmallPatterns; i++) {
-                            const type = availableSmallPatterns[Math.floor(Math.random() * availableSmallPatterns.length)];
-                            const pattern = pixelPatterns[type];
-                            if (!pattern) continue;
+                        const numShapes = Math.floor(Math.random() * 3) + 2;
+                        for (let i = 0; i < numShapes; i++) {
+                            const shapeColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const startX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const startY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const shapeWidth = Math.floor(Math.random() * (canvasWidth / pixelSize / 4) + 1) * pixelSize;
+                            const shapeHeight = Math.floor(Math.random() * (canvasHeight / pixelSize / 4) + 1) * pixelSize;
 
-                            const patternWidth = pattern[0].length * pixelSize;
-                            const patternHeight = pattern.length * pixelSize;
-
-                            const startX = Math.floor(Math.random() * ((canvasWidth - patternWidth) / pixelSize)) * pixelSize;
-                            const startY = Math.floor(Math.random() * ((canvasHeight - patternHeight) / pixelSize)) * pixelSize;
-                            const patternColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
-
-                            drawPattern(pattern, startX, startY, patternColor);
+                            if (Math.random() > 0.5) {
+                                for (let px = startX; px < startX + shapeWidth; px += pixelSize) {
+                                    for (let py = startY; py < startY + shapeHeight; py += pixelSize) {
+                                        addPixel(px, py, shapeColor, 0.6 + Math.random() * 0.3);
+                                    }
+                                }
+                            } else {
+                                const radius = Math.min(shapeWidth, shapeHeight) / 2;
+                                for (let px = startX; px < startX + radius * 2; px += pixelSize) {
+                                    for (let py = startY; py < startY + radius * 2; py += pixelSize) {
+                                        addPixel(px, py, shapeColor, 0.6 + Math.random() * 0.3);
+                                    }
+                                }
+                            }
                         }
                         break;
                 }
 
-                // ... (rest of the drawPixelArt function for animation remains the same)
                 pixelsToDraw.sort(() => Math.random() - 0.5);
 
                 if (animate) {
@@ -615,7 +419,7 @@
                     ctx.globalAlpha = 1.0;
                     setPixelArtDataUrl(canvas.toDataURL('image/png'));
                 }
-            }, [setIsDrawingAnimating, setPixelArtDataUrl, pixelPatterns]); // **IMPORTANT: Add pixelPatterns to useCallback dependencies**
+            }, [setIsDrawingAnimating, setPixelArtDataUrl]);
 
 
             const generateAffirmation = React.useCallback(async () => {
