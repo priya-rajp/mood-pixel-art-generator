@@ -378,6 +378,39 @@
                     style: "Abstract",
                     drawType: "gradient_fade",
                     drawTypeDescription: "a muted abstract composition with colors slowly fading"
+                },
+                // NEW STYLES ADDED
+                {
+                    concept: "A field of scattered, glowing dots creating a dreamy, ethereal effect.",
+                    palette: ["#FFD700", "#FFA500", "#87CEEB", "#90EE90", "#FF69B4"],
+                    moodTags: ["dreamy", "ethereal", "calm", "wonder", "subtle"],
+                    style: "Abstract",
+                    drawType: "scattered_dots",
+                    drawTypeDescription: "a field of scattered, glowing dots"
+                },
+                {
+                    concept: "A smooth horizontal gradient transitioning from warm to cool colors, representing balance.",
+                    palette: ["#FFCC33", "#FF9900", "#66CCFF", "#99FF99", "#FFCCCC"],
+                    moodTags: ["balanced", "calm", "harmonious", "transition"],
+                    style: "Abstract",
+                    drawType: "horizontal_gradient",
+                    drawTypeDescription: "a smooth horizontal gradient"
+                },
+                {
+                    concept: "A serene vertical gradient shifting from light to dark, evoking depth and tranquility.",
+                    palette: ["#ADD8E6", "#87CEEB", "#6495ED", "#4682B4", "#7B68EE"],
+                    moodTags: ["serene", "tranquil", "depth", "calm"],
+                    style: "Abstract",
+                    drawType: "vertical_gradient",
+                    drawTypeDescription: "a serene vertical gradient"
+                },
+                {
+                    concept: "A vibrant composition of randomly sized and colored rectangles, full of playful energy.",
+                    palette: ["#FF4500", "#FFD700", "#ADFF2F", "#00BFFF", "#FF1493"],
+                    moodTags: ["playful", "energetic", "dynamic", "bold", "vibrant"],
+                    style: "Geometric",
+                    drawType: "random_rectangles",
+                    drawTypeDescription: "a vibrant composition of randomly sized and colored rectangles"
                 }
             ], []);
 
@@ -890,6 +923,53 @@
                                 for (let px = 0; px < elementSize; px += pixelSize) {
                                     if (Math.random() > 0.4) { // Make them somewhat irregular
                                         addPixel(elementX + px, elementY + py, sparseColor, 0.7 + Math.random() * 0.3);
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    case "scattered_dots":
+                        const dotColor = effectivePalette[1] || "#FFFFFF";
+                        const numDots = Math.floor(canvasWidth * canvasHeight / (pixelSize * pixelSize) / 5); // Density of dots
+                        for (let i = 0; i < numDots; i++) {
+                            const dx = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const dy = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            addPixel(dx, dy, dotColor, 0.7 + Math.random() * 0.3); // Vary transparency
+                        }
+                        break;
+                    case "horizontal_gradient":
+                        const gradientColorsH = effectivePalette.length > 1 ? effectivePalette : ["#FFD700", "#66CCFF"];
+                        for (let x = 0; x < canvasWidth; x += pixelSize) {
+                            const colorIndex = Math.floor((x / canvasWidth) * gradientColorsH.length);
+                            const color = gradientColorsH[colorIndex];
+                            for (let y = 0; y < canvasHeight; y += pixelSize) {
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "vertical_gradient":
+                        const gradientColorsV = effectivePalette.length > 1 ? effectivePalette : ["#ADD8E6", "#4682B4"];
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            const colorIndex = Math.floor((y / canvasHeight) * gradientColorsV.length);
+                            const color = gradientColorsV[colorIndex];
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "random_rectangles":
+                        const numRectangles = Math.floor(Math.random() * 10) + 5; // 5 to 14 rectangles
+                        for (let i = 0; i < numRectangles; i++) {
+                            const rectColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const rectX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const rectY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const rectWidth = Math.floor(Math.random() * (canvasWidth / pixelSize / 3) + 2) * pixelSize;
+                            const rectHeight = Math.floor(Math.random() * (canvasHeight / pixelSize / 3) + 2) * pixelSize;
+
+                            for (let px = rectX; px < rectX + rectWidth; px += pixelSize) {
+                                for (let py = rectY; py < rectY + rectHeight; py += pixelSize) {
+                                    if (px < canvasWidth && py < canvasHeight) {
+                                        addPixel(px, py, rectColor, 0.8 + Math.random() * 0.2); // Vary transparency
                                     }
                                 }
                             }
