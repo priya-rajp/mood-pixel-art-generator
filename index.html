@@ -47,6 +47,7 @@
         .suggestion-item:hover {
             background-color: #f7fafc;
         }
+        /* Removed modal-overlay and modal-content styles as modals are removed */
     </style>
 </head>
 <body>
@@ -82,6 +83,14 @@
             const artContainerRef = React.useRef(null);
             const moodInputRef = React.useRef(null); // Ref for mood input
             const [canvasSize, setCanvasSize] = React.useState(400);
+
+            // States for research data collection (integrated into main page)
+            const [moodRatingBefore, setMoodRatingBefore] = React.useState(5); // Default to middle
+            const [moodRatingAfter, setMoodRatingAfter] = React.useState(5);
+            const [impactRating, setImpactRating] = React.useState(5); // 1-10 scale for impact
+            const [showPostInteractionRatings, setShowPostInteractionRatings] = React.useState(false);
+
+            // Removed loggedInteractions state and related useEffect
 
             // Click outside to close suggestions
             React.useEffect(() => {
@@ -391,6 +400,9 @@
                 "#9C27B0": "Dark Purple", "#673AB7": "Deep Purple", "#3F51B5": "Indigo", "#2196F3": "Blue", "#03A9F4": "Light Blue",
                 "#E0FFFF": "Light Cyan", "#F0F8FF": "Alice Blue"
             }), []);
+
+            // Removed logInteraction function entirely
+
 
             const drawPixelArt = React.useCallback((canvas, concept, palette, pixelSize, drawType, moodIntensity, animate = true) => {
                 const ctx = canvas.getContext('2d');
@@ -941,6 +953,7 @@
                             setPixelArtDataUrl(canvas.toDataURL('image/png'));
                             ctx.globalAlpha = 1.0;
                             setIsDrawingAnimating(false);
+                            setShowPostInteractionRatings(true); // Show ratings after drawing completes
                         }
                     };
                     requestAnimationFrame(animateDrawing);
@@ -952,28 +965,34 @@
                     });
                     ctx.globalAlpha = 1.0;
                     setPixelArtDataUrl(canvas.toDataURL('image/png'));
+                    setShowPostInteractionRatings(true); // Show ratings after drawing completes
                 }
             }, [setIsDrawingAnimating, setPixelArtDataUrl]);
 
 
-            const generateAffirmation = React.useCallback(async () => {
+            const generateAffirmationInternal = React.useCallback(async () => {
                 setIsAffirmationLoading(true);
                 setAffirmation('');
                 setErrorMessage('');
+                setShowPostInteractionRatings(false); // Hide previous ratings if regenerating
 
                 try {
+                    // Removed logInteraction call
                     await new Promise(resolve => setTimeout(resolve, 500));
                     const randomAffirmation = positiveAffirmations[Math.floor(Math.random() * positiveAffirmations.length)];
                     setAffirmation(randomAffirmation);
+                    // Removed logInteraction call
+                    setShowPostInteractionRatings(true); // Show ratings after generation
                 } catch (error) {
                     console.error('Error generating affirmation:', error);
                     setErrorMessage(`Error generating affirmation: ${error.message || 'Something went wrong.'}`);
+                    // Removed logInteraction call
                 } finally {
                     setIsAffirmationLoading(false);
                 }
-            }, [positiveAffirmations]);
+            }, [positiveAffirmations, moodRatingBefore, moodInput]);
 
-            const generateArt = React.useCallback(async (isSurprise = false) => {
+            const generateArtInternal = React.useCallback(async (isSurprise = false) => {
                 setIsLoading(true);
                 setPixelArtDataUrl('');
                 setArtDescription('');
@@ -982,8 +1001,11 @@
                 setLlmPalette([]);
                 setLlmDrawType('');
                 setShowSuggestions(false);
+                setShowPostInteractionRatings(false); // Hide previous ratings if regenerating
+
 
                 try {
+                    // Removed logInteraction call
                     await new Promise(resolve => setTimeout(resolve, 500));
 
                     let availableArt = positiveArtConceptsAndPalettes;
@@ -1034,6 +1056,7 @@
                         if (eligibleArtConcepts.length === 0) {
                             setErrorMessage("No suitable art concepts found for your mood and style. Try adjusting your input or selecting 'All' styles.");
                             setIsLoading(false);
+                            // Removed logInteraction call
                             return;
                         }
                     }
@@ -1102,6 +1125,7 @@
 
                     if (!finalArtData) {
                          setErrorMessage("No art concepts available for the selected style. Try a different mood or 'All' styles.");
+                         // Removed logInteraction call
                          return;
                     }
 
@@ -1117,6 +1141,8 @@
                     const canvas = canvasRef.current;
                     if (canvas) {
                         drawPixelArt(canvas, concept, palette, selectedPixelSize, drawType, moodIntensity, true);
+                        // Removed logInteraction call
+                        // setShowPostInteractionRatings(true) is called by drawPixelArt after animation
                     } else {
                         throw new Error('Canvas element not found. This should not happen as canvas is always rendered.');
                     }
@@ -1124,15 +1150,20 @@
                 } catch (error) {
                     console.error('Error generating art:', error);
                     setErrorMessage(`Error: ${error.message || 'Something went wrong during art generation. Please try again.'}`);
+                    // Removed logInteraction call
                 } finally {
                     setIsLoading(false);
                 }
-            }, [moodInput, selectedArtStyle, selectedPixelSize, moodIntensity, positiveArtConceptsAndPalettes, drawPixelArt, llmDrawType]);
+            }, [moodInput, selectedArtStyle, selectedPixelSize, moodIntensity, positiveArtConceptsAndPalettes, drawPixelArt, llmDrawType, moodRatingBefore]);
 
-            const generateSurpriseArt = React.useCallback(() => {
-                setMoodInput('');
-                generateArt(true);
-            }, [generateArt]);
+            const handleSubmitPostInteractionRatings = React.useCallback(() => {
+                // Removed logInteraction call
+                // Optionally reset ratings after submission
+                setMoodRatingAfter(5);
+                setImpactRating(5);
+                setShowPostInteractionRatings(false); // Hide ratings after submission
+            }, [moodRatingAfter, impactRating, pixelArtDataUrl, affirmation]);
+
 
             const describeArt = React.useCallback(async () => {
                 setIsDescriptionLoading(true);
@@ -1150,10 +1181,12 @@
                     
                     const description = `This pixel art, depicting ${llmDrawType}, is based on the concept: "${llmConcept}". It uses a vibrant palette of colors including ${colorNames.join(', ')}, designed to evoke feelings of positivity and joy.`;
                     setArtDescription(description);
+                    // Removed logInteraction call
 
                 } catch (error) {
                     console.error('Error describing art:', error);
                     setErrorMessage(`Error describing art: ${error.message || 'Something went wrong.'}`);
+                    // Removed logInteraction call
                 } finally {
                     setIsDescriptionLoading(false);
                 }
@@ -1167,10 +1200,14 @@
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
+                    // Removed logInteraction call
                 } else {
                     setErrorMessage("No pixel art to download. Please generate some art first!");
+                    // Removed logInteraction call
                 }
             }, [pixelArtDataUrl]);
+
+            // Removed clearLogs function
 
             const resetApp = React.useCallback(() => {
                 setMoodInput('');
@@ -1190,6 +1227,11 @@
                 setMoodIntensity(50);
                 setShowSuggestions(false);
                 setFilteredSuggestions([]);
+                setMoodRatingBefore(5); // Reset mood ratings
+                setMoodRatingAfter(5);
+                setImpactRating(5);
+                setShowPostInteractionRatings(false); // Hide post-interaction ratings
+                // Removed logInteraction call
             }, []);
 
             // Handle mood input changes for suggestions
@@ -1233,10 +1275,31 @@
                             Tell me how you're feeling, and I'll create a unique piece of uplifting pixel art with colors chosen to boost your mood!
                         </p>
 
+                        {/* Mood Rating Before Interaction */}
+                        <div className="mb-6">
+                            <label htmlFor="mood-rating-before" className="block text-gray-700 text-xl font-semibold mb-3">
+                                Rate Your Current Mood: {moodRatingBefore} / 10
+                            </label>
+                            <input
+                                id="mood-rating-before"
+                                type="range"
+                                min="1"
+                                max="10"
+                                step="1"
+                                value={moodRatingBefore}
+                                onChange={(e) => setMoodRatingBefore(parseInt(e.target.value))}
+                                className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                            />
+                            <div className="flex justify-between text-gray-600 text-sm mt-2">
+                                <span>Very Negative</span>
+                                <span>Very Positive</span>
+                            </div>
+                        </div>
+
                         {/* Mood Input Section */}
                         <div className="mb-6 relative" ref={moodInputRef}> {/* Added ref here */}
                             <label htmlFor="mood" className="block text-gray-700 text-xl font-semibold mb-3">
-                                How are you feeling right now?
+                                Describe Your Mood:
                             </label>
                             <input
                                 id="mood"
@@ -1333,7 +1396,7 @@
 
                         {/* Affirmation Button */}
                         <button
-                            onClick={generateAffirmation}
+                            onClick={generateAffirmationInternal}
                             disabled={isAffirmationLoading || isLoading || !moodInput.trim()}
                             className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 mb-4
                                 ${isAffirmationLoading
@@ -1373,7 +1436,7 @@
                         {/* Generate Art Buttons */}
                         <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
                             <button
-                                onClick={() => generateArt(false)}
+                                onClick={() => generateArtInternal(false)}
                                 disabled={isLoading || isDrawingAnimating || !moodInput.trim()}
                                 className={`flex-1 py-4 px-6 rounded-lg text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105
                                     ${isLoading || isDrawingAnimating || !moodInput.trim()
@@ -1394,7 +1457,7 @@
                                 )}
                             </button>
                             <button
-                                onClick={generateSurpriseArt}
+                                onClick={() => generateArtInternal(true)}
                                 disabled={isLoading || isDrawingAnimating}
                                 className={`flex-1 py-4 px-6 rounded-lg text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105
                                     ${isLoading || isDrawingAnimating
@@ -1407,7 +1470,7 @@
                                         <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
+                                    </svg>
                                         Surprising You...
                                     </span>
                                 ) : (
@@ -1439,6 +1502,7 @@
                                             e.target.onerror = null;
                                             e.target.src = "https://placehold.co/400x400/FF0000/FFFFFF?text=Pixel+Art+Load+Error";
                                             setErrorMessage("Failed to load generated pixel art. It might be corrupted or missing.");
+                                            // Removed logInteraction call
                                         }}
                                     />
                                 </div>
@@ -1450,7 +1514,7 @@
                                 <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
                                     {/* Regenerate Button */}
                                     <button
-                                        onClick={() => generateArt(false)}
+                                        onClick={() => generateArtInternal(false)}
                                         disabled={isLoading || isDrawingAnimating}
                                         className={`flex-1 py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105
                                             ${isLoading || isDrawingAnimating
@@ -1500,7 +1564,7 @@
                                             <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
+                                                </svg>
                                             Describing Art...
                                         </span>
                                     ) : (
@@ -1517,13 +1581,70 @@
                                 )}
                             </div>
                         )}
-                        {/* Reset Button */}
-                        <button
-                            onClick={resetApp}
-                            className="w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 mt-8 bg-gray-200 text-gray-700 shadow-md hover:shadow-lg hover:bg-gray-300"
-                        >
-                            Reset App
-                        </button>
+
+                        {/* Post-Interaction Ratings (Mood After & Impact) */}
+                        {(pixelArtDataUrl || affirmation) && showPostInteractionRatings && (
+                            <div className="mt-8 pt-8 border-t border-gray-200">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-6">Rate Your Experience</h2>
+
+                                <div className="mb-6">
+                                    <label htmlFor="impact-rating" className="block text-gray-700 text-xl font-semibold mb-3">
+                                        How much did this {pixelArtDataUrl ? 'art' : 'affirmation'} resonate or improve your mood? {impactRating} / 10
+                                    </label>
+                                    <input
+                                        id="impact-rating"
+                                        type="range"
+                                        min="1"
+                                        max="10"
+                                        step="1"
+                                        value={impactRating}
+                                        onChange={(e) => setImpactRating(parseInt(e.target.value))}
+                                        className="w-full h-2 bg-green-200 rounded-lg appearance-none cursor-pointer accent-green-500"
+                                    />
+                                    <div className="flex justify-between text-gray-600 text-sm mt-2">
+                                        <span>Not at all</span>
+                                        <span>Very much</span>
+                                    </div>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label htmlFor="mood-rating-after" className="block text-gray-700 text-xl font-semibold mb-3">
+                                        How are you feeling now? {moodRatingAfter} / 10
+                                    </label>
+                                    <input
+                                        id="mood-rating-after"
+                                        type="range"
+                                        min="1"
+                                        max="10"
+                                        step="1"
+                                        value={moodRatingAfter}
+                                        onChange={(e) => setMoodRatingAfter(parseInt(e.target.value))}
+                                        className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                    />
+                                    <div className="flex justify-between text-gray-600 text-sm mt-2">
+                                        <span>Very Negative</span>
+                                        <span>Very Positive</span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleSubmitPostInteractionRatings}
+                                    className="w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 bg-purple-600 text-white shadow-md hover:shadow-lg"
+                                >
+                                    Submit Ratings
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Reset Button (removed log buttons) */}
+                        <div className="flex justify-center mt-8">
+                            <button
+                                onClick={resetApp}
+                                className="w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 bg-gray-200 text-gray-700 shadow-md hover:shadow-lg hover:bg-gray-300"
+                            >
+                                Reset App
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
