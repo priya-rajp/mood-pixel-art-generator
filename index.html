@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mood-Based Pixel Art Generator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">\
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -312,7 +312,40 @@
                     drawType: "triangle_rhombus_composition",
                     drawTypeDescription: "a bold arrangement of pixelated triangles and rhombuses"
                 },
-                // SAD EMOTION CONCEPTS (These will be filtered out if a sad mood is detected)
+                // NEW ALGORITHMS
+                {
+                    concept: "A complex, self-similar pattern of squares nested within each other, representing infinite possibilities.",
+                    palette: ["#4CAF50", "#8BC34A", "#CDDC39", "#FFEB3B", "#FFC107"],
+                    moodTags: ["complex", "infinite", "growth", "structured", "thoughtful"],
+                    style: "Geometric",
+                    drawType: "recursive_squares",
+                    drawTypeDescription: "a complex, self-similar pattern of squares"
+                },
+                {
+                    concept: "A beautiful, radially symmetric pattern resembling a mandala, promoting balance and harmony.",
+                    palette: ["#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#03A9F4"],
+                    moodTags: ["balanced", "harmonious", "peaceful", "meditative", "focused"],
+                    style: "Geometric",
+                    drawType: "radial_pattern",
+                    drawTypeDescription: "a beautiful, radially symmetric pattern"
+                },
+                {
+                    concept: "A serene scene with gentle snowfall, evoking quiet contemplation and peace.",
+                    palette: ["#B0E0E6", "#ADD8E6", "#E0FFFF", "#F0F8FF", "#A9A9A9"],
+                    moodTags: ["calm", "peaceful", "quiet", "serene", "contemplative"],
+                    style: "Nature",
+                    drawType: "snowfall",
+                    drawTypeDescription: "a serene scene with gentle snowfall"
+                },
+                {
+                    concept: "A reflective scene with soft raindrops falling, suggesting introspection and renewal.",
+                    palette: ["#6A5ACD", "#4682B4", "#778899", "#B0C4DE", "#D3D3D3"],
+                    moodTags: ["reflective", "quiet", "renewal", "introspection", "calm"],
+                    style: "Nature",
+                    drawType: "raindrops",
+                    drawTypeDescription: "a reflective scene with soft raindrops falling"
+                },
+                // SAD EMOTION CONCEPTS (These will be filtered out if a positive mood is detected)
                 {
                     concept: "A quiet, reflective scene of gentle rain falling on a muted landscape.",
                     palette: ["#4682B4", "#6A5ACD", "#778899", "#A9A9A9", "#B0C4DE"], // Steel Blue, Slate Blue, Light Slate Gray, Dark Gray, Light Steel Blue
@@ -353,7 +386,10 @@
                 "#00BFFF": "Deep Sky Blue", "#FF1493": "Deep Pink", "#87CEFA": "Light Sky Blue", "#6A5ACD": "Slate Blue",
                 "#B0E0E6": "Powder Blue", "#FFDAB9": "Peach Puff", "#F08080": "Light Coral", "#7CFC00": "Lawn Green",
                 "#32CD32": "Lime Green", "#FFC0CB": "Pink", "#9370DB": "Medium Purple", "#A9A9A9": "Dark Gray",
-                "#778899": "Light Slate Gray", "#FF6347": "Tomato", "#D3D3D3": "Light Gray", "#696969": "Dim Gray"
+                "#778899": "Light Slate Gray", "#FF6347": "Tomato", "#D3D3D3": "Light Gray", "#696969": "Dim Gray",
+                "#4CAF50": "Dark Green", "#8BC34A": "Lime Green", "#CDDC39": "Light Lime Green", "#FFEB3B": "Lemon Yellow", "#FFC107": "Amber",
+                "#9C27B0": "Dark Purple", "#673AB7": "Deep Purple", "#3F51B5": "Indigo", "#2196F3": "Blue", "#03A9F4": "Light Blue",
+                "#E0FFFF": "Light Cyan", "#F0F8FF": "Alice Blue"
             }), []);
 
             const drawPixelArt = React.useCallback((canvas, concept, palette, pixelSize, drawType, moodIntensity, animate = true) => {
@@ -732,6 +768,80 @@
                             }
                         }
                         break;
+                    case "recursive_squares":
+                        const drawSquareRecursive = (x, y, size, depth, maxDepth, colorIndex) => {
+                            if (depth > maxDepth || size < pixelSize * 2) return;
+
+                            const color = effectivePalette[colorIndex % effectivePalette.length];
+                            for (let px = x; px < x + size; px += pixelSize) {
+                                for (let py = y; py < y + size; py += pixelSize) {
+                                    if (px === x || px === x + size - pixelSize || py === y || py === y + size - pixelSize) {
+                                        addPixel(px, py, color);
+                                    }
+                                }
+                            }
+
+                            const newSize = size * 0.7;
+                            const newX = x + (size - newSize) / 2;
+                            const newY = y + (size - newSize) / 2;
+                            drawSquareRecursive(newX, newY, newSize, depth + 1, maxDepth, colorIndex + 1);
+                        };
+                        drawSquareRecursive(0, 0, canvasWidth, 0, 4, 0); // Start recursion
+                        break;
+                    case "radial_pattern":
+                        const centerX = canvasWidth / 2;
+                        const centerY = canvasHeight / 2;
+                        const numRings = Math.floor(Math.random() * 3) + 3; // 3 to 5 rings
+                        const maxRadius = Math.min(centerX, centerY) * 0.9;
+
+                        for (let r = 1; r <= numRings; r++) {
+                            const currentRadius = (r / numRings) * maxRadius;
+                            const numElementsInRing = Math.floor(currentRadius / pixelSize / 2) * 6; // More elements for larger rings
+                            const color = effectivePalette[r % effectivePalette.length];
+
+                            for (let i = 0; i < numElementsInRing; i++) {
+                                const angle = (i / numElementsInRing) * Math.PI * 2;
+                                const x = centerX + currentRadius * Math.cos(angle);
+                                const y = centerY + currentRadius * Math.sin(angle);
+                                drawPixelCircle(x, y, pixelSize * (Math.random() > 0.7 ? 2 : 1), color); // Vary size
+                            }
+                        }
+                        break;
+                    case "snowfall":
+                        // Base sky
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[0] || "#ADD8E6"); // Light blue sky
+                            }
+                        }
+                        // Falling snowflakes
+                        const numSnowflakes = Math.floor(canvasWidth * canvasHeight / (pixelSize * pixelSize) / 10);
+                        const snowflakeColor = effectivePalette[effectivePalette.length - 1] || "#FFFFFF";
+                        for (let i = 0; i < numSnowflakes; i++) {
+                            const sx = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const sy = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            addPixel(sx, sy, snowflakeColor, 0.8 + Math.random() * 0.2); // Vary transparency
+                        }
+                        break;
+                    case "raindrops":
+                        // Base sky/ground
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[0] || "#6A5ACD"); // Muted sky
+                            }
+                        }
+                        // Falling raindrops (short lines)
+                        const numRaindrops = Math.floor(canvasWidth * canvasHeight / (pixelSize * pixelSize) / 8);
+                        const dropColor = effectivePalette[effectivePalette.length - 1] || "#B0C4DE"; // Light blue/gray
+                        for (let i = 0; i < numRaindrops; i++) {
+                            const rx = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const ry = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const dropLength = pixelSize * (Math.random() > 0.5 ? 2 : 3); // Vary length
+                            for (let dy = 0; dy < dropLength; dy += pixelSize) {
+                                addPixel(rx, ry + dy, dropColor, 0.6 + Math.random() * 0.3); // Vary transparency
+                            }
+                        }
+                        break;
                     case "falling_elements":
                         const elementColor = effectivePalette[1] || "#6A5ACD";
                         const numElements = Math.floor(canvasWidth * canvasHeight / (pixelSize * pixelSize) / 50); // Density
@@ -883,33 +993,58 @@
                     }
 
                     let finalArtData = null;
-                    let candidateArts = []; // Initialize candidateArts here
                     const lowerCaseMoodWords = moodInput.toLowerCase().split(/\s+/).filter(word => word.length > 0);
 
                     // Define sad mood keywords and sad-depicting draw types
                     const sadMoodKeywords = ["sad", "melancholic", "gloomy", "lonely", "reflective", "wistful", "quiet", "pensive", "somber", "introspective", "nostalgic"];
+                    const positiveMoodKeywords = [
+                        "happy", "joyful", "calm", "peaceful", "energetic", "creative", "excited",
+                        "hopeful", "relaxed", "serene", "tranquil", "playful", "bright", "lively",
+                        "focused", "thoughtful", "balanced", "structured", "harmonious", "dreamy",
+                        "wonder", "curious", "imaginative", "renewed", "restful", "vibrant", "powerful",
+                        "fresh", "growth", "new beginnings", "optimistic", "strong", "inspired", "grateful"
+                    ];
                     const sadDepictingDrawTypes = ["falling_elements", "sparse_elements", "gradient_fade"];
-                    const isSadMood = lowerCaseMoodWords.some(word => sadMoodKeywords.includes(word));
 
-                    // Filter out sad-depicting art if a sad mood is detected
+                    let positiveKeywordCount = 0;
+                    let sadKeywordCount = 0;
+
+                    lowerCaseMoodWords.forEach(word => {
+                        if (positiveMoodKeywords.includes(word)) {
+                            positiveKeywordCount++;
+                        }
+                        if (sadMoodKeywords.includes(word)) {
+                            sadKeywordCount++;
+                        }
+                    });
+
+                    // Determine the overall sentiment for art generation
+                    // If there's a positive keyword, or if it's a surprise/empty input, lean positive.
+                    // If only sad keywords are present, still aim for uplifting art (as per app's goal).
+                    const shouldGenerateUpliftingArt = isSurprise || !moodInput.trim() || positiveKeywordCount > 0 || sadKeywordCount > 0;
+
+                    // Filter out sad-depicting art if the goal is uplifting art
                     let eligibleArtConcepts = availableArt.filter(item =>
-                        !(isSadMood && sadDepictingDrawTypes.includes(item.drawType))
+                        shouldGenerateUpliftingArt ? !sadDepictingDrawTypes.includes(item.drawType) : true
                     );
 
+                    // If no eligible art concepts after filtering, fall back to all positive concepts
                     if (eligibleArtConcepts.length === 0) {
-                        setErrorMessage("No suitable art concepts found for your mood and style. Try adjusting your input.");
-                        setIsLoading(false);
-                        return;
+                        eligibleArtConcepts = availableArt.filter(item => !sadDepictingDrawTypes.includes(item.drawType));
+                        if (eligibleArtConcepts.length === 0) {
+                            setErrorMessage("No suitable art concepts found for your mood and style. Try adjusting your input or selecting 'All' styles.");
+                            setIsLoading(false);
+                            return;
+                        }
                     }
 
-                    // Determine the pool of candidates for selection
+                    // Determine the pool of candidates for selection based on mood matching
                     let candidatesForSelection = [];
-                    if (isSurprise || !moodInput.trim() || isSadMood) {
-                        // If surprise, empty mood, or sad mood, pick from all eligible positive concepts
-                        // The primary goal for sad moods is to provide uplifting art, not necessarily mood-matching
+                    if (isSurprise || !moodInput.trim()) {
+                        // If surprise or empty mood, pick from all eligible concepts
                         candidatesForSelection = eligibleArtConcepts;
                     } else {
-                        // For non-sad, non-empty moods, try to match mood tags
+                        // For specific moods, try to match mood tags
                         let bestMatchScore = -1;
                         for (const artItem of eligibleArtConcepts) {
                             let currentScore = 0;
@@ -920,12 +1055,12 @@
                             }
                             if (currentScore > bestMatchScore) {
                                 bestMatchScore = currentScore;
-                                candidateArts = [artItem];
+                                candidatesForSelection = [artItem]; // Start new list if better match found
                             } else if (currentScore === bestMatchScore && currentScore > 0) {
-                                candidatesForSelection.push(artItem);
+                                candidatesForSelection.push(artItem); // Add to list if same best score
                             }
                         }
-                        // If no mood-tag matches for a non-sad mood, still provide some art
+                        // If no direct mood-tag matches, fall back to all eligible concepts
                         if (candidatesForSelection.length === 0) {
                             candidatesForSelection = eligibleArtConcepts;
                         }
@@ -945,7 +1080,6 @@
                         } else {
                             // If all current candidates have the same drawType, broaden the search
                             // to any eligible art concept with a different drawType.
-                            // This ensures maximum variety even if the current mood has limited matching options.
                             const anyDifferentDrawTypeInEligible = eligibleArtConcepts.filter(item =>
                                 item.drawTypeDescription !== currentDrawTypeDisplayed
                             );
