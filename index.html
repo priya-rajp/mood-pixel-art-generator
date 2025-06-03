@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mood-Based Pixel Art Generator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">\
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -67,6 +67,7 @@
             const [isAffirmationLoading, setIsAffirmationLoading] = React.useState(false);
             const [llmConcept, setLlmConcept] = React.useState('');
             const [llmPalette, setLlmPalette] = React.useState([]);
+            const [llmDrawType, setLlmDrawType] = React.useState(''); // New state for draw type description
             const [artDescription, setArtDescription] = React.useState('');
             const [isDescriptionLoading, setIsDescriptionLoading] = React.useState(false);
             const [selectedArtStyle, setSelectedArtStyle] = React.useState('All');
@@ -116,7 +117,32 @@
                 "Your strength is greater than any struggle.", "Believe in yourself and all that you are.",
                 "You are worthy of happiness and success.", "Embrace the journey, enjoy the growth.",
                 "Today is a gift, that's why it's called the present.", "Your potential is limitless.",
-                "You are a beacon of positive energy.", "Great things are coming your way."
+                "You are a beacon of positive energy.", "Great things are coming your way.",
+                "You are stronger than you think.", "Your resilience is inspiring.",
+                "Challenges help you discover your inner power.", "You are a masterpiece in progress.",
+                "Every step forward, no matter how small, is progress.", "You are surrounded by opportunities.",
+                "Your creativity knows no bounds.", "You are a source of joy and light.",
+                "The universe conspires in your favor.", "You are deserving of all good things.",
+                "Your unique perspective is a gift.", "You are growing and evolving beautifully.",
+                "Success is a journey, not a destination.", "You inspire others with your spirit.",
+                "Your potential is infinite, just like the stars.", "You are a valuable and cherished individual.",
+                "Every breath is a chance to begin again.", "You are loved and supported.",
+                "Your positive thoughts create your reality.", "You are a magnet for miracles.",
+                "The best is yet to come.", "You are exactly where you need to be.",
+                "Your inner peace is your greatest power.", "You are a force of nature.",
+                "You radiate confidence and grace.", "You are capable of overcoming anything.",
+                "Your dreams are within reach.", "You are a testament to strength and courage.",
+                "You are a beautiful soul.", "You are making a difference.",
+                "Your light shines brightly.", "You are a blessing to those around you.",
+                "You are a true survivor.", "You are building a life you love.",
+                "Your journey is uniquely yours, and it's beautiful.", "You are a champion.",
+                "You are creating your own destiny.", "You are a star in the making.",
+                "You are a source of inspiration.", "You are a visionary.",
+                "You are a gift to the world.", "You are a true original.",
+                "You are a symbol of hope.", "You are a legend in the making.",
+                "You are a radiant being.", "You are a true inspiration.",
+                "You are a powerful creator.", "You are a beacon of light.",
+                "You are a beautiful mind.", "You are a true leader."
             ], []);
 
             // New list of mood suggestions for autocompletion
@@ -125,7 +151,9 @@
                 "hopeful", "relaxed", "serene", "tranquil", "playful", "bright", "lively",
                 "focused", "thoughtful", "balanced", "structured", "harmonious", "dreamy",
                 "wonder", "curious", "imaginative", "renewed", "restful", "vibrant", "powerful",
-                "fresh", "growth", "new beginnings", "optimistic", "strong", "inspired", "grateful"
+                "fresh", "growth", "new beginnings", "optimistic", "strong", "inspired", "grateful",
+                // Sad emotions
+                "sad", "melancholic", "gloomy", "lonely", "reflective", "wistful", "quiet", "pensive", "somber", "introspective", "nostalgic"
             ], []);
 
             const positiveArtConceptsAndPalettes = React.useMemo(() => [
@@ -134,63 +162,72 @@
                     palette: ["#FFD700", "#FFA500", "#87CEEB", "#90EE90", "#FF69B4"],
                     moodTags: ["energetic", "happy", "joyful", "creative", "excited", "vibrant"],
                     style: "Abstract",
-                    drawType: "random_pixels"
+                    drawType: "random_pixels",
+                    drawTypeDescription: "a dynamic arrangement of randomly placed pixels and shapes"
                 },
                 {
                     concept: "A serene landscape with a rising sun, bringing warmth and new beginnings.",
                     palette: ["#FFCC33", "#FF9900", "#66CCFF", "#99FF99", "#FFCCCC"],
                     moodTags: ["calm", "peaceful", "hopeful", "relaxed", "serene", "tranquil", "new beginnings"],
                     style: "Nature",
-                    drawType: "horizontal_stripes"
+                    drawType: "mountain_scene",
+                    drawTypeDescription: "majestic pixelated mountains under a clear sky with a rising sun"
                 },
                 {
                     concept: "A cheerful, pixelated garden bursting with happy flowers and bright skies.",
                     palette: ["#FFCC00", "#FF6666", "#66FF66", "#33CCFF", "#FF99CC"],
                     moodTags: ["happy", "joyful", "playful", "bright", "lively", "nature"],
                     style: "Nature",
-                    drawType: "random_pixels"
+                    drawType: "garden_scene",
+                    drawTypeDescription: "a cheerful pixelated garden with blooming flowers"
                 },
                 {
                     concept: "An uplifting abstract design with geometric shapes and harmonious gradients.",
                     palette: ["#ADD8E6", "#87CEEB", "#6495ED", "#4682B4", "#7B68EE"],
                     moodTags: ["calm", "focused", "thoughtful", "balanced", "structured", "harmonious"],
                     style: "Geometric",
-                    drawType: "checkerboard"
+                    drawType: "checkerboard",
+                    drawTypeDescription: "an uplifting checkerboard pattern"
                 },
                 {
                     concept: "A playful scene of stars twinkling in a peaceful night sky, full of wonder.",
                     palette: ["#F0E68C", "#DAA520", "#4682B4", "#7B68EE", "#DDA0DD"],
                     moodTags: ["dreamy", "wonder", "calm", "curious", "imaginative", "peaceful"],
-                    style: "Abstract",
-                    drawType: "random_pixels"
+                    style: "Nature",
+                    drawType: "starry_sky",
+                    drawTypeDescription: "a peaceful night sky filled with countless twinkling stars and a crescent moon"
                 },
                 {
                     concept: "A burst of positive energy, represented by dynamic lines and contrasting bright colors.",
                     palette: ["#FF4500", "#FFD700", "#ADFF2F", "#00BFFF", "#FF1493"],
                     moodTags: ["energetic", "excited", "dynamic", "bold", "vibrant", "powerful"],
                     style: "Abstract",
-                    drawType: "vertical_stripes"
+                    drawType: "vertical_stripes",
+                    drawTypeDescription: "dynamic vertical stripes"
                 },
                 {
                     concept: "A tranquil ocean view at sunrise, promoting peace and renewal.",
                     palette: ["#87CEFA", "#6A5ACD", "#B0E0E6", "#FFDAB9", "#F08080"],
                     moodTags: ["peaceful", "calm", "tranquil", "renewed", "restful", "serene"],
                     style: "Nature",
-                    drawType: "horizontal_stripes"
+                    drawType: "beach_scene",
+                    drawTypeDescription: "a tranquil pixelated beach with gentle waves and a distant sunset"
                 },
                 {
                     concept: "Abstract patterns reminiscent of a blooming spring, vibrant and fresh.",
                     palette: ["#7CFC00", "#32CD32", "#FFC0CB", "#FFD700", "#9370DB"],
                     moodTags: ["fresh", "growth", "happy", "vibrant", "new beginnings", "natural"],
                     style: "Abstract",
-                    drawType: "random_pixels"
+                    drawType: "random_pixels",
+                    drawTypeDescription: "a dynamic arrangement of randomly placed pixels and shapes"
                 },
                  {
                     concept: "A cityscape at dawn, with hopeful light breaking through.",
                     palette: ["#A9A9A9", "#778899", "#ADD8E6", "#FFD700", "#FF6347"],
                     moodTags: ["hopeful", "urban", "new beginnings", "optimistic", "modern"],
                     style: "Geometric",
-                    drawType: "checkerboard"
+                    drawType: "checkerboard",
+                    drawTypeDescription: "a pixelated cityscape at dawn"
                 },
                 // NEW ALGORITHMS AND CONCEPTS
                 {
@@ -198,21 +235,107 @@
                     palette: ["#FF6347", "#FFD700", "#00BFFF", "#7B68EE", "#ADFF2F"],
                     moodTags: ["dynamic", "progress", "active", "forward-looking", "energetic"],
                     style: "Abstract",
-                    drawType: "diagonal_lines"
+                    drawType: "diagonal_lines",
+                    drawTypeDescription: "dynamic diagonal lines conveying motion"
                 },
                 {
                     concept: "Concentric squares expanding from the center, representing focus and expansion.",
                     palette: ["#6495ED", "#FFDAB9", "#90EE90", "#FF99CC", "#87CEEB"],
                     moodTags: ["focused", "expanding", "meditative", "growth", "balanced"],
                     style: "Geometric",
-                    drawType: "concentric_squares"
+                    drawType: "concentric_squares",
+                    drawTypeDescription: "concentric squares expanding from the center"
                 },
                 {
                     concept: "A calm, almost cosmic noise pattern, suggesting peace in complexity.",
                     palette: ["#DDA0DD", "#B0E0E6", "#6A5ACD", "#4682B4", "#778899"],
                     moodTags: ["calm", "contemplative", "peaceful", "complex", "cosmic"],
                     style: "Abstract",
-                    drawType: "noise_pattern"
+                    drawType: "noise_pattern",
+                    drawTypeDescription: "a calm, almost cosmic noise pattern"
+                },
+                // NEW NATURE CONCEPTS
+                {
+                    concept: "A serene pixelated beach with gentle waves and a distant sunset.",
+                    palette: ["#FFDAB9", "#87CEFA", "#6A5ACD", "#FFA500", "#FF6347"],
+                    moodTags: ["peaceful", "serene", "relaxed", "nature", "hopeful"],
+                    style: "Nature",
+                    drawType: "beach_scene",
+                    drawTypeDescription: "a serene pixelated beach with gentle waves and a distant sunset"
+                },
+                {
+                    concept: "Majestic pixel mountains under a clear sky, inspiring strength and awe.",
+                    palette: ["#A9A9A9", "#778899", "#B0C4DE", "#ADD8E6", "#6A5ACD"],
+                    moodTags: ["strong", "awe", "calm", "nature", "peaceful"],
+                    style: "Nature",
+                    drawType: "mountain_scene",
+                    drawTypeDescription: "majestic pixel mountains under a clear sky"
+                },
+                {
+                    concept: "A lively pixel garden with various blooming flowers and buzzing pixel bees.",
+                    palette: ["#FFCC00", "#FF6666", "#66FF66", "#33CCFF", "#FF99CC", "#7CFC00"],
+                    moodTags: ["lively", "joyful", "vibrant", "nature", "playful"],
+                    style: "Nature",
+                    drawType: "garden_scene",
+                    drawTypeDescription: "a lively pixel garden with various blooming flowers and buzzing pixel bees"
+                },
+                {
+                    concept: "A pixelated night sky filled with countless twinkling stars and a crescent moon.",
+                    palette: ["#000033", "#191970", "#4682B4", "#F0E68C", "#FFFFFF"],
+                    moodTags: ["dreamy", "wonder", "peaceful", "calm", "cosmic"],
+                    style: "Nature",
+                    drawType: "starry_sky",
+                    drawTypeDescription: "a pixelated night sky filled with countless twinkling stars and a crescent moon"
+                },
+                {
+                    concept: "Small, happy pixel birds flying freely in a bright, open sky.",
+                    palette: ["#87CEEB", "#ADD8E6", "#90EE90", "#FFD700", "#FFA500"],
+                    moodTags: ["freedom", "joyful", "lively", "nature", "energetic"],
+                    style: "Nature",
+                    drawType: "birds_flying",
+                    drawTypeDescription: "small, happy pixel birds flying freely in a bright, open sky"
+                },
+                // NEW GEOMETRIC CONCEPTS
+                {
+                    concept: "A harmonious composition of pixelated circles and ellipses, flowing gracefully.",
+                    palette: ["#6495ED", "#ADD8E6", "#B0E0E6", "#DDA0DD", "#FFDAB9"],
+                    moodTags: ["harmonious", "balanced", "flowing", "geometric", "calm"],
+                    style: "Geometric",
+                    drawType: "circle_ellipse_composition",
+                    drawTypeDescription: "a harmonious composition of pixelated circles and ellipses"
+                },
+                {
+                    concept: "A bold arrangement of pixelated triangles and rhombuses, creating dynamic patterns.",
+                    palette: ["#FF6347", "#FFD700", "#00BFFF", "#7B68EE", "#ADFF2F"],
+                    moodTags: ["dynamic", "bold", "structured", "geometric", "energetic"],
+                    style: "Geometric",
+                    drawType: "triangle_rhombus_composition",
+                    drawTypeDescription: "a bold arrangement of pixelated triangles and rhombuses"
+                },
+                // SAD EMOTION CONCEPTS (These will be filtered out if a sad mood is detected)
+                {
+                    concept: "A quiet, reflective scene of gentle rain falling on a muted landscape.",
+                    palette: ["#4682B4", "#6A5ACD", "#778899", "#A9A9A9", "#B0C4DE"], // Steel Blue, Slate Blue, Light Slate Gray, Dark Gray, Light Steel Blue
+                    moodTags: ["sad", "melancholic", "gloomy", "reflective", "calm", "quiet"],
+                    style: "Abstract",
+                    drawType: "falling_elements",
+                    drawTypeDescription: "a quiet scene with gentle falling elements, suggesting contemplation"
+                },
+                {
+                    concept: "A desolate, sparse landscape under a fading sky, emphasizing loneliness.",
+                    palette: ["#778899", "#A9A9A9", "#B0C4DE", "#D3D3D3", "#696969"], // Light Slate Gray, Dark Gray, Light Steel Blue, Light Gray, Dim Gray
+                    moodTags: ["lonely", "wistful", "pensive", "somber", "introspective"],
+                    style: "Abstract",
+                    drawType: "sparse_elements",
+                    drawTypeDescription: "a desolate landscape with sparse elements, emphasizing loneliness"
+                },
+                {
+                    concept: "A muted abstract composition with colors slowly fading, representing a quiet transition.",
+                    palette: ["#6A5ACD", "#4682B4", "#7B68EE", "#DDA0DD", "#B0E0E6"], // Slate Blue, Steel Blue, Medium Slate Blue, Plum, Powder Blue
+                    moodTags: ["melancholic", "reflective", "wistful", "nostalgic", "calm"],
+                    style: "Abstract",
+                    drawType: "gradient_fade",
+                    drawTypeDescription: "a muted abstract composition with colors slowly fading"
                 }
             ], []);
 
@@ -230,7 +353,7 @@
                 "#00BFFF": "Deep Sky Blue", "#FF1493": "Deep Pink", "#87CEFA": "Light Sky Blue", "#6A5ACD": "Slate Blue",
                 "#B0E0E6": "Powder Blue", "#FFDAB9": "Peach Puff", "#F08080": "Light Coral", "#7CFC00": "Lawn Green",
                 "#32CD32": "Lime Green", "#FFC0CB": "Pink", "#9370DB": "Medium Purple", "#A9A9A9": "Dark Gray",
-                "#778899": "Light Slate Gray", "#FF6347": "Tomato"
+                "#778899": "Light Slate Gray", "#FF6347": "Tomato", "#D3D3D3": "Light Gray", "#696969": "Dim Gray"
             }), []);
 
             const drawPixelArt = React.useCallback((canvas, concept, palette, pixelSize, drawType, moodIntensity, animate = true) => {
@@ -262,6 +385,103 @@
                 const addPixel = (x, y, color, alpha = 1.0) => {
                     pixelsToDraw.push({ x, y, color, alpha });
                 };
+
+                // Helper function to draw a pixelated circle
+                const drawPixelCircle = (centerX, centerY, radius, color) => {
+                    for (let y = -radius; y <= radius; y += pixelSize) {
+                        for (let x = -radius; x <= radius; x += pixelSize) {
+                            if (x * x + y * y <= radius * radius) {
+                                addPixel(centerX + x, centerY + y, color);
+                            }
+                        }
+                    }
+                };
+
+                // Helper function to draw a pixelated ellipse
+                const drawPixelEllipse = (centerX, centerY, radiusX, radiusY, color) => {
+                    for (let y = -radiusY; y <= radiusY; y += pixelSize) {
+                        for (let x = -radiusX; x <= radiusX; x += pixelSize) {
+                            if ((x * x) / (radiusX * radiusX) + (y * y) / (radiusY * radiusY) <= 1) {
+                                addPixel(centerX + x, centerY + y, color);
+                            }
+                        }
+                    }
+                };
+
+                // Helper function to draw a pixelated triangle (filled)
+                const drawPixelTriangle = (p1, p2, p3, color) => {
+                    // Sort points by Y-coordinate
+                    const points = [p1, p2, p3].sort((a, b) => a.y - b.y);
+                    const [pTop, pMid, pBot] = points;
+
+                    // Function to calculate X-coordinate on a line given Y
+                    const getXOnLine = (pA, pB, y) => {
+                        if (pA.y === pB.y) return pA.x; // Horizontal line
+                        return pA.x + (pB.x - pA.x) * (y - pA.y) / (pB.y - pA.y);
+                    };
+
+                    // Draw top half (from pTop to pMid)
+                    for (let y = pTop.y; y < pMid.y; y += pixelSize) {
+                        const xLeft = getXOnLine(pTop, pMid, y);
+                        const xRight = getXOnLine(pTop, pBot, y);
+                        for (let x = Math.min(xLeft, xRight); x < Math.max(xLeft, xRight); x += pixelSize) {
+                            addPixel(Math.floor(x / pixelSize) * pixelSize, Math.floor(y / pixelSize) * pixelSize, color);
+                        }
+                    }
+
+                    // Draw bottom half (from pMid to pBot)
+                    for (let y = pMid.y; y <= pBot.y; y += pixelSize) {
+                        const xLeft = getXOnLine(pMid, pBot, y);
+                        const xRight = getXOnLine(pTop, pBot, y);
+                        for (let x = Math.min(xLeft, xRight); x < Math.max(xLeft, xRight); x += pixelSize) {
+                            addPixel(Math.floor(x / pixelSize) * pixelSize, Math.floor(y / pixelSize) * pixelSize, color);
+                        }
+                    }
+                };
+
+                // Helper function to draw a pixelated rhombus
+                const drawPixelRhombus = (centerX, centerY, halfWidth, halfHeight, color) => {
+                    for (let y = -halfHeight; y <= halfHeight; y += pixelSize) {
+                        for (let x = -halfWidth; x <= halfWidth; x += pixelSize) {
+                            // Rhombus equation: |x/halfWidth| + |y/halfHeight| <= 1
+                            if (Math.abs(x / halfWidth) + Math.abs(y / halfHeight) <= 1) {
+                                addPixel(centerX + x, centerY + y, color);
+                            }
+                        }
+                    }
+                };
+
+                // Helper function to draw pixelated clouds
+                const drawPixelClouds = (cloudColor) => {
+                    const numClouds = Math.floor(Math.random() * 3) + 2; // 2 to 4 clouds
+                    for (let i = 0; i < numClouds; i++) {
+                        const cloudX = Math.floor(Math.random() * (canvasWidth / pixelSize / 1.2)) * pixelSize;
+                        const cloudY = Math.floor(Math.random() * (canvasHeight / pixelSize / 4)) * pixelSize; // Upper quarter of the canvas
+                        const cloudWidth = Math.floor(Math.random() * (canvasWidth / pixelSize / 5) + 5) * pixelSize; // Vary width
+                        const cloudHeight = Math.floor(Math.random() * (canvasHeight / pixelSize / 10) + 3) * pixelSize; // Vary height
+
+                        // Draw a rough oval shape for the cloud
+                        for (let py = 0; py < cloudHeight; py += pixelSize) {
+                            for (let px = 0; px < cloudWidth; px += pixelSize) {
+                                // Simple oval logic: (x/a)^2 + (y/b)^2 <= 1
+                                const normalizedX = (px - cloudWidth / 2) / (cloudWidth / 2);
+                                const normalizedY = (py - cloudHeight / 2) / (cloudHeight / 2);
+                                if (normalizedX * normalizedX + normalizedY * normalizedY <= 1) {
+                                    addPixel(cloudX + px, cloudY + py, cloudColor, 0.9); // Slightly transparent
+                                }
+                            }
+                        }
+                        // Add some random "fluff" pixels around the main shape
+                        for (let j = 0; j < (cloudWidth * cloudHeight / (pixelSize * pixelSize)) * 0.1; j++) {
+                            const randX = cloudX + Math.floor(Math.random() * cloudWidth / pixelSize) * pixelSize;
+                            const randY = cloudY + Math.floor(Math.random() * cloudHeight / pixelSize) * pixelSize;
+                            if (Math.random() > 0.5) {
+                                addPixel(randX, randY, cloudColor, 0.7);
+                            }
+                        }
+                    }
+                };
+
 
                 switch (drawType) {
                     case "horizontal_stripes":
@@ -349,6 +569,210 @@
                             }
                         }
                         break;
+                    case "beach_scene":
+                        // Sand (bottom 1/3)
+                        for (let y = Math.floor(canvasHeight * 2 / 3); y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[1] || "#FFDAB9"); // Sand color
+                            }
+                        }
+                        // Water (middle 1/3)
+                        for (let y = Math.floor(canvasHeight * 1 / 3); y < Math.floor(canvasHeight * 2 / 3); y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[2] || "#87CEFA"); // Water color
+                            }
+                        }
+                        // Sky (top 1/3)
+                        for (let y = 0; y < Math.floor(canvasHeight * 1 / 3); y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[3] || "#66CCFF"); // Sky color
+                            }
+                        }
+                        // Sun
+                        drawPixelCircle(canvasWidth * 0.8, canvasHeight * 0.2, pixelSize * 4, effectivePalette[0] || "#FFA500");
+                        // Clouds
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
+                        break;
+                    case "mountain_scene":
+                        // Sky
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[3] || "#ADD8E6"); // Sky color
+                            }
+                        }
+                        // Mountains (base)
+                        const mountainColor = effectivePalette[1] || "#778899";
+                        const numMountains = Math.floor(Math.random() * 2) + 2;
+                        for (let i = 0; i < numMountains; i++) {
+                            const mountainBaseY = canvasHeight; // Base of the mountain is at the bottom of the canvas
+                            const mountainPeakY = Math.floor(canvasHeight * (0.3 + Math.random() * 0.3)); // Peak is higher up
+                            const mountainHeight = mountainBaseY - mountainPeakY;
+                            const mountainBaseWidth = Math.floor((canvasWidth / numMountains / 2 + Math.random() * canvasWidth / numMountains / 2) / pixelSize) * pixelSize;
+                            const mountainStartX = Math.floor(Math.random() * (canvasWidth - mountainBaseWidth) / pixelSize) * pixelSize;
+
+                            for (let y = mountainBaseY; y >= mountainPeakY; y -= pixelSize) {
+                                const progress = (mountainBaseY - y) / mountainHeight; // 0 at base, 1 at peak
+                                const currentRowWidth = mountainBaseWidth * (1 - progress);
+                                const currentStartX = mountainStartX + (mountainBaseWidth - currentRowWidth) / 2;
+
+                                for (let x = currentStartX; x < currentStartX + currentRowWidth; x += pixelSize) {
+                                    if (x >= 0 && x < canvasWidth) {
+                                        addPixel(x, y, mountainColor);
+                                    }
+                                }
+                            }
+                        }
+                        // Sun for mountain scene
+                        drawPixelCircle(canvasWidth * 0.8, canvasHeight * 0.2, pixelSize * 4, effectivePalette[0] || "#FFD700");
+                        // Clouds
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
+                        break;
+                    case "garden_scene":
+                        // Ground
+                        for (let y = Math.floor(canvasHeight * 0.6); y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[5] || "#7CFC00"); // Green ground
+                            }
+                        }
+                        // Sky
+                        for (let y = 0; y < Math.floor(canvasHeight * 0.6); y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[3] || "#ADD8E6"); // Blue sky
+                            }
+                        }
+                        // Flowers
+                        const numFlowers = Math.floor(Math.random() * 10) + 5;
+                        for (let i = 0; i < numFlowers; i++) {
+                            const flowerX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const flowerY = Math.floor(Math.random() * (canvasHeight * 0.4 / pixelSize) + (canvasHeight * 0.6 / pixelSize)) * pixelSize;
+                            const flowerColor = effectivePalette[Math.floor(Math.random() * (effectivePalette.length - 1)) + 1]; // Pick a non-ground color
+                            drawPixelCircle(flowerX, flowerY, pixelSize * 2, flowerColor);
+                        }
+                        // Clouds
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
+                        break;
+                    case "starry_sky":
+                        // Dark background
+                        ctx.fillStyle = effectivePalette[0] || "#000033";
+                        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                        // Stars
+                        const numStars = Math.floor(Math.random() * 100) + 50;
+                        for (let i = 0; i < numStars; i++) {
+                            const starX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const starY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const starColor = effectivePalette[Math.floor(Math.random() * (effectivePalette.length - 1)) + 1] || "#FFFFFF";
+                            addPixel(starX, starY, starColor); // Single pixel star
+                            if (Math.random() > 0.7) { // Occasionally draw a cross shape for a bigger star
+                                addPixel(starX + pixelSize, starY, starColor);
+                                addPixel(starX - pixelSize, starY, starColor);
+                                addPixel(starX, starY + pixelSize, starColor);
+                                addPixel(starX, starY - pixelSize, starColor);
+                            }
+                        }
+                        // Moon (optional)
+                        if (Math.random() > 0.5) {
+                            drawPixelCircle(canvasWidth * 0.2, canvasHeight * 0.2, pixelSize * 5, effectivePalette[effectivePalette.length - 1] || "#F0E68C");
+                        }
+                        // Clouds (subtle, dark clouds for night sky)
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 2] || "#A9A9A9"); // Use a darker color for night clouds
+                        break;
+                    case "birds_flying":
+                        // Sky background
+                        ctx.fillStyle = effectivePalette[0] || "#87CEEB";
+                        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                        // Birds
+                        const numBirds = Math.floor(Math.random() * 8) + 3;
+                        const birdColor = effectivePalette[1] || "#778899";
+                        for (let i = 0; i < numBirds; i++) {
+                            const birdX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const birdY = Math.floor(Math.random() * (canvasHeight * 0.8 / pixelSize)) * pixelSize;
+                            // Simple V-shape bird
+                            addPixel(birdX, birdY, birdColor);
+                            addPixel(birdX + pixelSize, birdY + pixelSize, birdColor);
+                            addPixel(birdX + pixelSize * 2, birdY, birdColor);
+                        }
+                        // Clouds
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
+                        break;
+                    case "circle_ellipse_composition":
+                        const numShapesCE = Math.floor(Math.random() * 8) + 5;
+                        for (let i = 0; i < numShapesCE; i++) {
+                            const shapeColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const centerX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const centerY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const radiusX = Math.floor(Math.random() * (canvasWidth / pixelSize / 8) + 2) * pixelSize;
+                            const radiusY = Math.floor(Math.random() * (canvasHeight / pixelSize / 8) + 2) * pixelSize;
+
+                            if (Math.random() > 0.5) {
+                                drawPixelCircle(centerX, centerY, Math.min(radiusX, radiusY), shapeColor);
+                            } else {
+                                drawPixelEllipse(centerX, centerY, radiusX, radiusY, shapeColor);
+                            }
+                        }
+                        break;
+                    case "triangle_rhombus_composition":
+                        const numShapesTR = Math.floor(Math.random() * 8) + 5;
+                        for (let i = 0; i < numShapesTR; i++) {
+                            const shapeColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const centerX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const centerY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const size = Math.floor(Math.random() * (canvasWidth / pixelSize / 8) + 2) * pixelSize;
+
+                            if (Math.random() > 0.5) {
+                                // Draw a triangle
+                                const p1 = { x: centerX, y: centerY - size / 2 };
+                                const p2 = { x: centerX - size / 2, y: centerY + size / 2 };
+                                const p3 = { x: centerX + size / 2, y: centerY + size / 2 };
+                                drawPixelTriangle(p1, p2, p3, shapeColor);
+                            } else {
+                                // Draw a rhombus
+                                drawPixelRhombus(centerX, centerY, size / 2, size / 3, shapeColor);
+                            }
+                        }
+                        break;
+                    case "falling_elements":
+                        const elementColor = effectivePalette[1] || "#6A5ACD";
+                        const numElements = Math.floor(canvasWidth * canvasHeight / (pixelSize * pixelSize) / 50); // Density
+                        for (let i = 0; i < numElements; i++) {
+                            const startX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const startY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const elementSize = pixelSize * (Math.random() > 0.5 ? 1 : 2); // Vary size
+                            const elementAlpha = 0.5 + Math.random() * 0.5; // Vary transparency
+
+                            // Draw a small vertical line or square for rain/falling element
+                            for (let yOffset = 0; yOffset < elementSize; yOffset += pixelSize) {
+                                addPixel(startX, startY + yOffset, elementColor, elementAlpha);
+                            }
+                        }
+                        break;
+                    case "gradient_fade":
+                        const gradientColors = effectivePalette.length > 1 ? effectivePalette : ["#4682B4", "#778899"];
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            const colorIndex = Math.floor((y / canvasHeight) * gradientColors.length);
+                            const color = gradientColors[colorIndex];
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "sparse_elements":
+                        const sparseColor = effectivePalette[1] || "#778899";
+                        const numSparseElements = Math.floor(Math.random() * 5) + 3; // Few elements
+                        for (let i = 0; i < numSparseElements; i++) {
+                            const elementX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const elementY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const elementSize = pixelSize * (Math.random() > 0.5 ? 2 : 3); // Slightly larger elements
+                            for (let py = 0; py < elementSize; py += pixelSize) {
+                                for (let px = 0; px < elementSize; px += pixelSize) {
+                                    if (Math.random() > 0.4) { // Make them somewhat irregular
+                                        addPixel(elementX + px, elementY + py, sparseColor, 0.7 + Math.random() * 0.3);
+                                    }
+                                }
+                            }
+                        }
+                        break;
                     case "random_pixels":
                     default:
                         for (let y = 0; y < canvasHeight; y += pixelSize) {
@@ -375,12 +799,12 @@
                                 }
                             } else {
                                 const radius = Math.min(shapeWidth, shapeHeight) / 2;
-                                for (let px = startX; px < startX + radius * 2; px += pixelSize) {
-                                    for (let py = startY; py < startY + radius * 2; py += pixelSize) {
-                                        addPixel(px, py, shapeColor, 0.6 + Math.random() * 0.3);
-                                    }
-                                }
+                                drawPixelCircle(startX + radius, startY + radius, radius, shapeColor); // Use helper
                             }
+                        }
+                        // Clouds for abstract/random scenes if they have a sky-like background
+                        if (effectivePalette.length > 1) { // Ensure there are enough colors for clouds
+                            drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
                         }
                         break;
                 }
@@ -439,14 +863,15 @@
                 }
             }, [positiveAffirmations]);
 
-            const generateArt = React.useCallback(async (isSurprise = false) => { // Added isSurprise parameter
+            const generateArt = React.useCallback(async (isSurprise = false) => {
                 setIsLoading(true);
                 setPixelArtDataUrl('');
                 setArtDescription('');
                 setErrorMessage('');
                 setLlmConcept('');
                 setLlmPalette([]);
-                setShowSuggestions(false); // Hide suggestions when generating art
+                setLlmDrawType('');
+                setShowSuggestions(false);
 
                 try {
                     await new Promise(resolve => setTimeout(resolve, 500));
@@ -458,30 +883,88 @@
                     }
 
                     let finalArtData = null;
+                    let candidateArts = []; // Initialize candidateArts here
+                    const lowerCaseMoodWords = moodInput.toLowerCase().split(/\s+/).filter(word => word.length > 0);
 
-                    if (isSurprise || !moodInput.trim()) { // If Surprise button or mood input is empty
-                        finalArtData = availableArt[Math.floor(Math.random() * availableArt.length)];
+                    // Define sad mood keywords and sad-depicting draw types
+                    const sadMoodKeywords = ["sad", "melancholic", "gloomy", "lonely", "reflective", "wistful", "quiet", "pensive", "somber", "introspective", "nostalgic"];
+                    const sadDepictingDrawTypes = ["falling_elements", "sparse_elements", "gradient_fade"];
+                    const isSadMood = lowerCaseMoodWords.some(word => sadMoodKeywords.includes(word));
+
+                    // Filter out sad-depicting art if a sad mood is detected
+                    let eligibleArtConcepts = availableArt.filter(item =>
+                        !(isSadMood && sadDepictingDrawTypes.includes(item.drawType))
+                    );
+
+                    if (eligibleArtConcepts.length === 0) {
+                        setErrorMessage("No suitable art concepts found for your mood and style. Try adjusting your input.");
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    // Determine the pool of candidates for selection
+                    let candidatesForSelection = [];
+                    if (isSurprise || !moodInput.trim() || isSadMood) {
+                        // If surprise, empty mood, or sad mood, pick from all eligible positive concepts
+                        // The primary goal for sad moods is to provide uplifting art, not necessarily mood-matching
+                        candidatesForSelection = eligibleArtConcepts;
                     } else {
-                        let bestMatch = null;
-                        let maxScore = -1;
-                        const lowerCaseMoodWords = moodInput.toLowerCase().split(/\s+/).filter(word => word.length > 0);
-
-                        if (lowerCaseMoodWords.length > 0) {
-                            for (const artItem of availableArt) {
-                                let currentScore = 0;
-                                for (const moodTag of artItem.moodTags) {
-                                    if (lowerCaseMoodWords.includes(moodTag)) {
-                                        currentScore++;
-                                    }
-                                }
-                                if (currentScore > maxScore) {
-                                    maxScore = currentScore;
-                                    bestMatch = artItem;
+                        // For non-sad, non-empty moods, try to match mood tags
+                        let bestMatchScore = -1;
+                        for (const artItem of eligibleArtConcepts) {
+                            let currentScore = 0;
+                            for (const moodTag of artItem.moodTags) {
+                                if (lowerCaseMoodWords.includes(moodTag)) {
+                                    currentScore++;
                                 }
                             }
+                            if (currentScore > bestMatchScore) {
+                                bestMatchScore = currentScore;
+                                candidateArts = [artItem];
+                            } else if (currentScore === bestMatchScore && currentScore > 0) {
+                                candidatesForSelection.push(artItem);
+                            }
                         }
-                        finalArtData = bestMatch || availableArt[Math.floor(Math.random() * availableArt.length)];
+                        // If no mood-tag matches for a non-sad mood, still provide some art
+                        if (candidatesForSelection.length === 0) {
+                            candidatesForSelection = eligibleArtConcepts;
+                        }
                     }
+
+                    // Now, apply the regeneration logic to `candidatesForSelection`
+                    const currentDrawTypeDisplayed = llmDrawType;
+                    let finalCandidatesForRegeneration = candidatesForSelection;
+
+                    if (currentDrawTypeDisplayed) { // Only apply regeneration logic if art is already displayed
+                        const differentDrawTypeCandidates = candidatesForSelection.filter(item =>
+                            item.drawTypeDescription !== currentDrawTypeDisplayed
+                        );
+
+                        if (differentDrawTypeCandidates.length > 0) {
+                            finalCandidatesForRegeneration = differentDrawTypeCandidates;
+                        } else {
+                            // If all current candidates have the same drawType, broaden the search
+                            // to any eligible art concept with a different drawType.
+                            // This ensures maximum variety even if the current mood has limited matching options.
+                            const anyDifferentDrawTypeInEligible = eligibleArtConcepts.filter(item =>
+                                item.drawTypeDescription !== currentDrawTypeDisplayed
+                            );
+                            if (anyDifferentDrawTypeInEligible.length > 0) {
+                                finalCandidatesForRegeneration = anyDifferentDrawTypeInEligible;
+                            }
+                            // If still no different drawType, then finalCandidatesForRegeneration remains
+                            // the original candidatesForSelection (meaning it might repeat drawType but vary concept/palette)
+                        }
+                    }
+
+                    // Pick one randomly from the final candidates
+                    if (finalCandidatesForRegeneration.length > 0) {
+                        finalArtData = finalCandidatesForRegeneration[Math.floor(Math.random() * finalCandidatesForRegeneration.length)];
+                    } else {
+                        // Fallback in case something went wrong with filtering/selection
+                        finalArtData = eligibleArtConcepts[Math.floor(Math.random() * eligibleArtConcepts.length)];
+                    }
+
 
                     if (!finalArtData) {
                          setErrorMessage("No art concepts available for the selected style. Try a different mood or 'All' styles.");
@@ -491,9 +974,11 @@
                     const concept = finalArtData.concept;
                     const palette = finalArtData.palette;
                     const drawType = finalArtData.drawType || "random_pixels";
+                    const drawTypeDescription = finalArtData.drawTypeDescription || "a pixel art composition";
 
                     setLlmConcept(concept);
                     setLlmPalette(palette);
+                    setLlmDrawType(drawTypeDescription);
 
                     const canvas = canvasRef.current;
                     if (canvas) {
@@ -508,11 +993,11 @@
                 } finally {
                     setIsLoading(false);
                 }
-            }, [moodInput, selectedArtStyle, selectedPixelSize, moodIntensity, positiveArtConceptsAndPalettes, drawPixelArt]);
+            }, [moodInput, selectedArtStyle, selectedPixelSize, moodIntensity, positiveArtConceptsAndPalettes, drawPixelArt, llmDrawType]);
 
             const generateSurpriseArt = React.useCallback(() => {
-                setMoodInput(''); // Clear mood input to ensure random selection if not already empty
-                generateArt(true); // Call generateArt with the surprise flag
+                setMoodInput('');
+                generateArt(true);
             }, [generateArt]);
 
             const describeArt = React.useCallback(async () => {
@@ -523,13 +1008,13 @@
                 try {
                     await new Promise(resolve => setTimeout(resolve, 700));
 
-                    if (!llmConcept || llmPalette.length === 0) {
-                        throw new Error('No art concept or palette available to describe. Please generate art first.');
+                    if (!llmConcept || llmPalette.length === 0 || !llmDrawType) {
+                        throw new Error('No art concept, palette, or drawing type available to describe. Please generate art first.');
                     }
 
                     const colorNames = llmPalette.map(hex => hexToColorName[hex] || hex);
                     
-                    const description = `This pixel art is based on the concept: "${llmConcept}". It uses a vibrant palette of colors including ${colorNames.join(', ')}, designed to evoke feelings of positivity and joy.`;
+                    const description = `This pixel art, depicting ${llmDrawType}, is based on the concept: "${llmConcept}". It uses a vibrant palette of colors including ${colorNames.join(', ')}, designed to evoke feelings of positivity and joy.`;
                     setArtDescription(description);
 
                 } catch (error) {
@@ -538,7 +1023,7 @@
                 } finally {
                     setIsDescriptionLoading(false);
                 }
-            }, [llmConcept, llmPalette, hexToColorName]);
+            }, [llmConcept, llmPalette, llmDrawType, hexToColorName]);
 
             const downloadArt = React.useCallback(() => {
                 if (pixelArtDataUrl) {
@@ -563,6 +1048,7 @@
                 setIsAffirmationLoading(false);
                 setLlmConcept('');
                 setLlmPalette([]);
+                setLlmDrawType('');
                 setArtDescription('');
                 setIsDescriptionLoading(false);
                 setSelectedArtStyle('All');
@@ -868,7 +1354,7 @@
                                 {/* Describe Art Button */}
                                 <button
                                     onClick={describeArt}
-                                    disabled={isDescriptionLoading || isLoading || isDrawingAnimating || !llmConcept || llmPalette.length === 0}
+                                    disabled={isDescriptionLoading || isLoading || isDrawingAnimating || !llmConcept || llmPalette.length === 0 || !llmDrawType}
                                     className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 mt-4
                                         ${isDescriptionLoading || isLoading || isDrawingAnimating
                                             ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-100 cursor-not-allowed'
