@@ -134,28 +134,28 @@
                     palette: ["#FFD700", "#FFA500", "#87CEEB", "#90EE90", "#FF69B4"],
                     moodTags: ["energetic", "happy", "joyful", "creative", "excited", "vibrant"],
                     style: "Abstract",
-                    drawType: "random_pixels"
+                    drawType: "random_pixels" // Keep this for Abstract
                 },
                 {
                     concept: "A serene landscape with a rising sun, bringing warmth and new beginnings.",
                     palette: ["#FFCC33", "#FF9900", "#66CCFF", "#99FF99", "#FFCCCC"],
                     moodTags: ["calm", "peaceful", "hopeful", "relaxed", "serene", "tranquil", "new beginnings"],
                     style: "Nature",
-                    drawType: "horizontal_stripes"
+                    drawType: "horizontal_stripes" // Can keep, or change to "organic_blobs" or "scattered_elements"
                 },
                 {
                     concept: "A cheerful, pixelated garden bursting with happy flowers and bright skies.",
                     palette: ["#FFCC00", "#FF6666", "#66FF66", "#33CCFF", "#FF99CC"],
                     moodTags: ["happy", "joyful", "playful", "bright", "lively", "nature"],
                     style: "Nature",
-                    drawType: "random_pixels"
+                    drawType: "scattered_elements" // **NEW: Use scattered_elements for flowers**
                 },
                 {
-                    concept: "An uplifting abstract design with geometric shapes and harmonious gradients.",
+                    concept: "An uplifting abstract design with harmonious triangular forms and gradients.", // Concept updated
                     palette: ["#ADD8E6", "#87CEEB", "#6495ED", "#4682B4", "#7B68EE"],
                     moodTags: ["calm", "focused", "thoughtful", "balanced", "structured", "harmonious"],
                     style: "Geometric",
-                    drawType: "checkerboard"
+                    drawType: "triangle_grid" // **NEW: Use triangle_grid**
                 },
                 {
                     concept: "A playful scene of stars twinkling in a peaceful night sky, full of wonder.",
@@ -165,34 +165,27 @@
                     drawType: "random_pixels"
                 },
                 {
-                    concept: "A burst of positive energy, represented by dynamic lines and contrasting bright colors.",
-                    palette: ["#FF4500", "#FFD700", "#ADFF2F", "#00BFFF", "#FF1493"],
-                    moodTags: ["energetic", "excited", "dynamic", "bold", "vibrant", "powerful"],
-                    style: "Abstract",
-                    drawType: "vertical_stripes"
-                },
-                {
                     concept: "A tranquil ocean view at sunrise, promoting peace and renewal.",
                     palette: ["#87CEFA", "#6A5ACD", "#B0E0E6", "#FFDAB9", "#F08080"],
                     moodTags: ["peaceful", "calm", "tranquil", "renewed", "restful", "serene"],
                     style: "Nature",
-                    drawType: "horizontal_stripes"
+                    drawType: "organic_blobs" // **NEW: Use organic_blobs for water/sky**
                 },
                 {
                     concept: "Abstract patterns reminiscent of a blooming spring, vibrant and fresh.",
                     palette: ["#7CFC00", "#32CD32", "#FFC0CB", "#FFD700", "#9370DB"],
                     moodTags: ["fresh", "growth", "happy", "vibrant", "new beginnings", "natural"],
-                    style: "Abstract",
-                    drawType: "random_pixels"
+                    style: "Nature",
+                    drawType: "scattered_elements" // **NEW: Use scattered_elements for foliage/blooming**
                 },
                  {
-                    concept: "A cityscape at dawn, with hopeful light breaking through.",
+                    concept: "A cityscape at dawn, with hopeful light breaking through, featuring diverse geometric forms.",
                     palette: ["#A9A9A9", "#778899", "#ADD8E6", "#FFD700", "#FF6347"],
                     moodTags: ["hopeful", "urban", "new beginnings", "optimistic", "modern"],
                     style: "Geometric",
-                    drawType: "checkerboard"
+                    drawType: "random_polygons" // **NEW: Use random_polygons for buildings**
                 },
-                // NEW ALGORITHMS AND CONCEPTS
+                // Keep existing algorithms
                 {
                     concept: "Dynamic diagonal lines conveying motion and progress.",
                     palette: ["#FF6347", "#FFD700", "#00BFFF", "#7B68EE", "#ADFF2F"],
@@ -349,6 +342,143 @@
                             }
                         }
                         break;
+                    case "organic_blobs":
+                        const numBlobs = Math.floor(Math.random() * 5) + 3; // 3 to 7 blobs
+                        for (let i = 0; i < numBlobs; i++) {
+                            const blobColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const centerX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const centerY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const maxRadius = Math.floor(Math.random() * (Math.min(canvasWidth, canvasHeight) / pixelSize / 6) + 3) * pixelSize; // 3 to 9 pixels radius
+
+                            for (let y = -maxRadius; y <= maxRadius; y += pixelSize) {
+                                for (let x = -maxRadius; x <= maxRadius; x += pixelSize) {
+                                    const dist = Math.sqrt(x * x + y * y);
+                                    if (dist < maxRadius && Math.random() > (dist / maxRadius) * 0.5) { // Denser near center
+                                        addPixel(centerX + x, centerY + y, blobColor, 0.7 + Math.random() * 0.3);
+                                    }
+                                }
+                            }
+                        }
+                        // Add some scattered elements for ground/sky fill
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                if (Math.random() > 0.9) { // Low density background scatter
+                                    const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                                    addPixel(x, y, color, 0.3 + Math.random() * 0.4);
+                                }
+                            }
+                        }
+                        break;
+
+                    case "scattered_elements":
+                        const elementShapes = ['square', 'circle', 'triangle'];
+                        const numElements = Math.floor(Math.random() * 15) + 10; // 10 to 25 elements
+                        for (let i = 0; i < numElements; i++) {
+                            const elementColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const startX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const startY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const size = Math.floor(Math.random() * 3) + 2; // 2 to 4 pixels wide/tall
+
+                            const shapeType = elementShapes[Math.floor(Math.random() * elementShapes.length)];
+
+                            if (shapeType === 'square') {
+                                for (let px = 0; px < size * pixelSize; px += pixelSize) {
+                                    for (let py = 0; py < size * pixelSize; py += pixelSize) {
+                                        addPixel(startX + px, startY + py, elementColor, 0.8 + Math.random() * 0.2);
+                                    }
+                                }
+                            } else if (shapeType === 'circle') {
+                                const radius = size * pixelSize / 2;
+                                for (let px = -radius; px <= radius; px += pixelSize) {
+                                    for (let py = -radius; py <= radius; py += pixelSize) {
+                                        if (Math.sqrt(px * px + py * py) <= radius) {
+                                            addPixel(startX + radius + px, startY + radius + py, elementColor, 0.8 + Math.random() * 0.2);
+                                        }
+                                    }
+                                }
+                            } else if (shapeType === 'triangle') {
+                                // Draw a simple right-angled triangle or isosceles triangle
+                                for (let py = 0; py < size * pixelSize; py += pixelSize) {
+                                    const currentWidth = (py / (size * pixelSize)) * (size * pixelSize); // width expands with height
+                                    for (let px = 0; px < currentWidth; px += pixelSize) {
+                                        addPixel(startX + px, startY + py, elementColor, 0.8 + Math.random() * 0.2);
+                                    }
+                                }
+                            }
+                        }
+                        break;
+
+                    case "triangle_grid":
+                        const triangleSize = pixelSize * 4; // Size of a triangle block
+                        for (let y = 0; y < canvasHeight; y += triangleSize) {
+                            for (let x = 0; x < canvasWidth; x += triangleSize) {
+                                const color1 = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                                const color2 = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+
+                                // Draw two triangles in the "square" block
+                                // Top-left to bottom-right diagonal
+                                for (let ty = 0; ty < triangleSize; ty += pixelSize) {
+                                    for (let tx = 0; tx <= ty; tx += pixelSize) {
+                                        addPixel(x + tx, y + ty, color1);
+                                    }
+                                }
+                                // Bottom-right to top-left diagonal (fill the rest)
+                                for (let ty = 0; ty < triangleSize; ty += pixelSize) {
+                                    for (let tx = ty + pixelSize; tx < triangleSize; tx += pixelSize) { // Start tx from ty+pixelSize
+                                        addPixel(x + tx, y + ty, color2);
+                                    }
+                                }
+                            }
+                        }
+                        break;
+
+                    case "random_polygons":
+                        const numPolygons = Math.floor(Math.random() * 5) + 3; // 3 to 7 polygons
+                        for (let i = 0; i < numPolygons; i++) {
+                            const polygonColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const numVertices = Math.floor(Math.random() * 3) + 3; // 3 (triangle) to 5 (pentagon) vertices
+                            const polygonSize = Math.floor(Math.random() * (Math.min(canvasWidth, canvasHeight) / pixelSize / 5) + 5) * pixelSize; // Size of polygon
+                            const centerX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const centerY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+
+                            const vertices = [];
+                            for (let v = 0; v < numVertices; v++) {
+                                const angle = (v / numVertices) * 2 * Math.PI + Math.random() * 0.5 - 0.25; // Slight randomness for imperfect shapes
+                                vertices.push({
+                                    x: centerX + Math.cos(angle) * polygonSize / 2,
+                                    y: centerY + Math.sin(angle) * polygonSize / 2
+                                });
+                            }
+
+                            // Simple scanline fill for polygon
+                            const minY = Math.min(...vertices.map(v => v.y));
+                            const maxY = Math.max(...vertices.map(v => v.y));
+
+                            for (let py = Math.floor(minY / pixelSize) * pixelSize; py <= Math.floor(maxY / pixelSize) * pixelSize; py += pixelSize) {
+                                const intersections = [];
+                                for (let j = 0; j < numVertices; j++) {
+                                    const p1 = vertices[j];
+                                    const p2 = vertices[(j + 1) % numVertices];
+
+                                    if (((p1.y <= py && p2.y > py) || (p2.y <= py && p1.y > py)) &&
+                                        (p1.x < (p2.x - p1.x) * (py - p1.y) / (p2.y - p1.y) + p1.x)) {
+                                        intersections.push((p2.x - p1.x) * (py - p1.y) / (p2.y - p1.y) + p1.x);
+                                    }
+                                }
+                                intersections.sort((a, b) => a - b);
+
+                                for (let k = 0; k < intersections.length; k += 2) {
+                                    if (intersections[k] === intersections[k + 1]) continue;
+                                    const startFillX = Math.floor(intersections[k] / pixelSize) * pixelSize;
+                                    const endFillX = Math.floor(intersections[k + 1] / pixelSize) * pixelSize;
+                                    for (let px = startFillX; px <= endFillX; px += pixelSize) {
+                                        addPixel(px, py, polygonColor, 0.7 + Math.random() * 0.3);
+                                    }
+                                }
+                            }
+                        }
+                        break;
+
                     case "random_pixels":
                     default:
                         for (let y = 0; y < canvasHeight; y += pixelSize) {
