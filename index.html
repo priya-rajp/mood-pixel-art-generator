@@ -1,145 +1,1736 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mood Pixel Art Generator</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  body {
-    font-family: 'Inter', sans-serif;
-  }
-  .image-rendering-pixelated {
-    image-rendering: pixelated;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood-Based Pixel Art Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        /* This is crucial for maintaining the pixelated look when scaled */
+        .image-rendering-pixelated {
+            image-rendering: optimizeSpeed;             /* Older versions of FF */
+            image-rendering: -moz-crisp-edges;          /* FF 6.0+ */
+            image-rendering: -webkit-optimize-contrast; /* Safari, Chrome */
+            image-rendering: optimize-contrast;         /* CSS4 */
+            image-rendering: pixelated;                 /* CSS4 */
+            -ms-interpolation-mode: nearest-neighbor;   /* IE */
+        }
+        .suggestions-list {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background-color: white;
+            z-index: 10;
+            position: absolute; /* To position it directly below the input */
+            width: calc(100% - 2rem); /* Match input width with padding */
+            left: 1rem; /* Match input padding */
+            right: 1rem;
+        }
+        .suggestion-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            text-align: left;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        .suggestion-item:hover {
+            background-color: #f7fafc;
+        }
+        /* Removed modal-overlay and modal-content styles as modals are removed */
+    </style>
 </head>
-<body class="bg-gray-100">
+<body>
+    <div id="root"></div>
 
-<div id="root" class="max-w-4xl mx-auto p-4"></div>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel">
+        const App = () => {
+            const [moodInput, setMoodInput] = React.useState('');
+            const [pixelArtDataUrl, setPixelArtDataUrl] = React.useState('');
+            const [isLoading, setIsLoading] = React.useState(false);
+            const [isDrawingAnimating, setIsDrawingAnimating] = React.useState(false);
+            const [errorMessage, setErrorMessage] = React.useState('');
+            const [affirmation, setAffirmation] = React.useState('');
+            const [isAffirmationLoading, setIsAffirmationLoading] = React.useState(false);
+            const [llmConcept, setLlmConcept] = React.useState('');
+            const [llmPalette, setLlmPalette] = React.useState([]);
+            const [llmDrawType, setLlmDrawType] = React.useState(''); // New state for draw type description
+            const [artDescription, setArtDescription] = React.useState('');
+            const [isDescriptionLoading, setIsDescriptionLoading] = React.useState(false);
+            const [selectedArtStyle, setSelectedArtStyle] = React.useState('All');
+            const [selectedPixelSize, setSelectedPixelSize] = React.useState(10);
+            const [moodIntensity, setMoodIntensity] = React.useState(50);
 
-<script type="text/babel">
+            // New states for mood suggestions
+            const [showSuggestions, setShowSuggestions] = React.useState(false);
+            const [filteredSuggestions, setFilteredSuggestions] = React.useState([]);
 
-const App = () => {
-  const [moodInput, setMoodInput] = React.useState('');
-  const [generatedImages, setGeneratedImages] = React.useState([]);
-  const canvasRef = React.useRef(null);
+            const canvasRef = React.useRef(null);
+            const artContainerRef = React.useRef(null);
+            const moodInputRef = React.useRef(null); // Ref for mood input
+            const [canvasSize, setCanvasSize] = React.useState(400);
 
-  const moodPalettes = {
-    happy: ['#FFD700', '#FFA500', '#FF69B4', '#FFFF00'],
-    calm: ['#ADD8E6', '#90EE90', '#E0FFFF', '#B0E0E6'],
-    creative: ['#FF4500', '#FFD700', '#ADFF2F', '#00BFFF', '#FF1493'],
-    sad: ['#708090', '#778899', '#A9A9A9', '#B0C4DE'],
-    energetic: ['#FF0000', '#FF8C00', '#FFD700', '#ADFF2F'],
-    love: ['#FF69B4', '#FF1493', '#FFB6C1', '#FFC0CB'],
-    motivated: ['#FF8C00', '#FFD700', '#00FF7F', '#7CFC00'],
-    inspired: ['#00BFFF', '#ADFF2F', '#FFD700', '#FF69B4'],
-    relaxed: ['#B0E0E6', '#ADD8E6', '#E6E6FA', '#F0FFF0'],
-    focused: ['#8A2BE2', '#4B0082', '#000080', '#191970'],
-    hopeful: ['#00FA9A', '#98FB98', '#7FFFD4', '#66CDAA'],
-    nostalgic: ['#DEB887', '#F4A460', '#DAA520', '#D2B48C'],
-    default: ['#87CEEB', '#90EE90', '#FFB6C1', '#FFFACD']
-  };
+            // States for research data collection (integrated into main page)
+            const [moodRatingBefore, setMoodRatingBefore] = React.useState(5); // Default to middle
+            const [moodRatingAfter, setMoodRatingAfter] = React.useState(5);
+            const [impactRating, setImpactRating] = React.useState(5); // 1-10 scale for impact
+            const [showPostInteractionRatings, setShowPostInteractionRatings] = React.useState(false);
 
-  const generateMoodArt = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const size = 100;
-    const pixelSize = 10;
+            // Removed loggedInteractions state and related useEffect
 
-    const mood = moodInput.trim().toLowerCase();
+            // Click outside to close suggestions
+            React.useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (moodInputRef.current && !moodInputRef.current.contains(event.target)) {
+                        setShowSuggestions(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => {
+                    document.removeEventListener('mousedown', handleClickOutside);
+                };
+            }, [moodInputRef]);
 
-    let palette = moodPalettes.default;
-    for (const key in moodPalettes) {
-      if (mood.includes(key)) {
-        palette = moodPalettes[key];
-        break;
-      }
-    }
 
-    // Draw random pixel art
-    for (let y = 0; y < size; y += pixelSize) {
-      for (let x = 0; x < size; x += pixelSize) {
-        const color = palette[Math.floor(Math.random() * palette.length)];
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y, pixelSize, pixelSize);
-      }
-    }
+            React.useEffect(() => {
+                const updateCanvasSize = () => {
+                    if (artContainerRef.current) {
+                        const containerWidth = artContainerRef.current.offsetWidth;
+                        const newSize = Math.min(400, Math.floor(containerWidth * 0.9));
+                        setCanvasSize(newSize);
+                    }
+                };
 
-    const dataUrl = canvas.toDataURL('image/png');
-    setGeneratedImages(prev => [...prev, { url: dataUrl, mood }]);
-  };
+                updateCanvasSize();
+                window.addEventListener('resize', updateCanvasSize);
 
-  const downloadImage = (dataUrl, index) => {
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `pixel_art_${index + 1}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
+                return () => window.removeEventListener('resize', updateCanvasSize);
+            }, []);
 
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-center text-gray-800 mb-4">Mood Pixel Art Generator</h1>
+            const positiveAffirmations = React.useMemo(() => [
+                "You are capable of amazing things.", "Every day is a new opportunity to shine.",
+                "Your strength is greater than any struggle.", "Believe in yourself and all that you are.",
+                "You are worthy of happiness and success.", "Embrace the journey, enjoy the growth.",
+                "Today is a gift, that's why it's called the present.", "Your potential is limitless.",
+                "You are a beacon of positive energy.", "Great things are coming your way.",
+                "You are stronger than you think.", "Your resilience is inspiring.",
+                "Challenges help you discover your inner power.", "You are a masterpiece in progress.",
+                "Every step forward, no matter how small, is progress.", "You are surrounded by opportunities.",
+                "Your creativity knows no bounds.", "You are a source of joy and light.",
+                "The universe conspires in your favor.", "You are deserving of all good things.",
+                "Your unique perspective is a gift.", "You are growing and evolving beautifully.",
+                "Success is a journey, not a destination.", "You inspire others with your spirit.",
+                "Your potential is infinite, just like the stars.", "You are a valuable and cherished individual.",
+                "Every breath is a chance to begin again.", "You are loved and supported.",
+                "Your positive thoughts create your reality.", "You are a magnet for miracles.",
+                "The best is yet to come.", "You are exactly where you need to be.",
+                "Your inner peace is your greatest power.", "You are a force of nature.",
+                "You radiate confidence and grace.", "You are capable of overcoming anything.",
+                "Your dreams are within reach.", "You are a testament to strength and courage.",
+                "You are a beautiful soul.", "You are making a difference.",
+                "Your light shines brightly.", "You are a blessing to those around you.",
+                "You are a true survivor.", "You are building a life you love.",
+                "Your journey is uniquely yours, and it's beautiful.", "You are a champion.",
+                "You are creating your own destiny.", "You are a star in the making.",
+                "You are a source of inspiration.", "You are a visionary.",
+                "You are a gift to the world.", "You are a true original.",
+                "You are a symbol of hope.", "You are a legend in the making.",
+                "You are a radiant being.", "You are a true inspiration.",
+                "You are a powerful creator.", "You are a beacon of light.",
+                "You are a beautiful mind.", "You are a true leader."
+            ], []);
 
-      <div className="flex flex-col items-center mb-4">
-        <input
-          type="text"
-          value={moodInput}
-          onChange={e => setMoodInput(e.target.value)}
-          placeholder="How are you feeling today?"
-          className="border p-2 rounded w-full max-w-xs mb-2"
-        />
-        <button
-          onClick={generateMoodArt}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-        >
-          Generate Art
-        </button>
-      </div>
+            // New list of mood suggestions for autocompletion
+            const moodSuggestions = React.useMemo(() => [
+                "happy", "joyful", "calm", "peaceful", "energetic", "creative", "excited",
+                "hopeful", "relaxed", "serene", "tranquil", "playful", "bright", "lively",
+                "focused", "thoughtful", "balanced", "structured", "harmonious", "dreamy",
+                "wonder", "curious", "imaginative", "renewed", "restful", "vibrant", "powerful",
+                "fresh", "growth", "new beginnings", "optimistic", "strong", "inspired", "grateful",
+                // Sad emotions
+                "sad", "melancholic", "gloomy", "lonely", "reflective", "wistful", "quiet", "pensive", "somber", "introspective", "nostalgic"
+            ], []);
 
-      <canvas
-        ref={canvasRef}
-        width={100}
-        height={100}
-        className="hidden"
-      ></canvas>
+            const positiveArtConceptsAndPalettes = React.useMemo(() => [
+                {
+                    concept: "A vibrant abstract pattern of swirling colors, evoking a sense of light and freedom.",
+                    palette: ["#FFD700", "#FFA500", "#87CEEB", "#90EE90", "#FF69B4"],
+                    moodTags: ["energetic", "happy", "joyful", "creative", "excited", "vibrant"],
+                    style: "Abstract",
+                    drawType: "random_pixels",
+                    drawTypeDescription: "a dynamic arrangement of randomly placed pixels and shapes"
+                },
+                {
+                    concept: "A serene landscape with a rising sun, bringing warmth and new beginnings.",
+                    palette: ["#FFCC33", "#FF9900", "#66CCFF", "#99FF99", "#FFCCCC"],
+                    moodTags: ["calm", "peaceful", "hopeful", "relaxed", "serene", "tranquil", "new beginnings"],
+                    style: "Nature",
+                    drawType: "mountain_scene",
+                    drawTypeDescription: "majestic pixelated mountains under a clear sky with a rising sun"
+                },
+                {
+                    concept: "A cheerful, pixelated garden bursting with happy flowers and bright skies.",
+                    palette: ["#FFCC00", "#FF6666", "#66FF66", "#33CCFF", "#FF99CC"],
+                    moodTags: ["happy", "joyful", "playful", "bright", "lively", "nature"],
+                    style: "Nature",
+                    drawType: "garden_scene",
+                    drawTypeDescription: "a cheerful pixelated garden with blooming flowers"
+                },
+                {
+                    concept: "An uplifting abstract design with geometric shapes and harmonious gradients.",
+                    palette: ["#ADD8E6", "#87CEEB", "#6495ED", "#4682B4", "#7B68EE"],
+                    moodTags: ["calm", "focused", "thoughtful", "balanced", "structured", "harmonious"],
+                    style: "Geometric",
+                    drawType: "checkerboard",
+                    drawTypeDescription: "an uplifting checkerboard pattern"
+                },
+                {
+                    concept: "A playful scene of stars twinkling in a peaceful night sky, full of wonder.",
+                    palette: ["#F0E68C", "#DAA520", "#4682B4", "#7B68EE", "#DDA0DD"],
+                    moodTags: ["dreamy", "wonder", "calm", "curious", "imaginative", "peaceful"],
+                    style: "Nature",
+                    drawType: "starry_sky",
+                    drawTypeDescription: "a peaceful night sky filled with countless twinkling stars and a crescent moon"
+                },
+                {
+                    concept: "A burst of positive energy, represented by dynamic lines and contrasting bright colors.",
+                    palette: ["#FF4500", "#FFD700", "#ADFF2F", "#00BFFF", "#FF1493"],
+                    moodTags: ["energetic", "excited", "dynamic", "bold", "vibrant", "powerful"],
+                    style: "Abstract",
+                    drawType: "vertical_stripes",
+                    drawTypeDescription: "dynamic vertical stripes"
+                },
+                {
+                    concept: "A tranquil ocean view at sunrise, promoting peace and renewal.",
+                    palette: ["#87CEFA", "#6A5ACD", "#B0E0E6", "#FFDAB9", "#F08080"],
+                    moodTags: ["peaceful", "calm", "tranquil", "renewed", "restful", "serene"],
+                    style: "Nature",
+                    drawType: "beach_scene",
+                    drawTypeDescription: "a tranquil pixelated beach with gentle waves and a distant sunset"
+                },
+                {
+                    concept: "Abstract patterns reminiscent of a blooming spring, vibrant and fresh.",
+                    palette: ["#7CFC00", "#32CD32", "#FFC0CB", "#FFD700", "#9370DB"],
+                    moodTags: ["fresh", "growth", "happy", "vibrant", "new beginnings", "natural"],
+                    style: "Abstract",
+                    drawType: "random_pixels",
+                    drawTypeDescription: "a dynamic arrangement of randomly placed pixels and shapes"
+                },
+                 {
+                    concept: "A cityscape at dawn, with hopeful light breaking through.",
+                    palette: ["#A9A9A9", "#778899", "#ADD8E6", "#FFD700", "#FF6347"],
+                    moodTags: ["hopeful", "urban", "new beginnings", "optimistic", "modern"],
+                    style: "Geometric",
+                    drawType: "checkerboard",
+                    drawTypeDescription: "a pixelated cityscape at dawn"
+                },
+                // NEW ALGORITHMS AND CONCEPTS
+                {
+                    concept: "Dynamic diagonal lines conveying motion and progress.",
+                    palette: ["#FF6347", "#FFD700", "#00BFFF", "#7B68EE", "#ADFF2F"],
+                    moodTags: ["dynamic", "progress", "active", "forward-looking", "energetic"],
+                    style: "Abstract",
+                    drawType: "diagonal_lines",
+                    drawTypeDescription: "dynamic diagonal lines conveying motion"
+                },
+                {
+                    concept: "Concentric squares expanding from the center, representing focus and expansion.",
+                    palette: ["#6495ED", "#FFDAB9", "#90EE90", "#FF99CC", "#87CEEB"],
+                    moodTags: ["focused", "expanding", "meditative", "growth", "balanced"],
+                    style: "Geometric",
+                    drawType: "concentric_squares",
+                    drawTypeDescription: "concentric squares expanding from the center"
+                },
+                {
+                    concept: "A calm, almost cosmic noise pattern, suggesting peace in complexity.",
+                    palette: ["#DDA0DD", "#B0E0E6", "#6A5ACD", "#4682B4", "#778899"],
+                    moodTags: ["calm", "contemplative", "peaceful", "complex", "cosmic"],
+                    style: "Abstract",
+                    drawType: "noise_pattern",
+                    drawTypeDescription: "a calm, almost cosmic noise pattern"
+                },
+                // NEW NATURE CONCEPTS
+                {
+                    concept: "A serene pixelated beach with gentle waves and a distant sunset.",
+                    palette: ["#FFDAB9", "#87CEFA", "#6A5ACD", "#FFA500", "#FF6347"],
+                    moodTags: ["peaceful", "serene", "relaxed", "nature", "hopeful"],
+                    style: "Nature",
+                    drawType: "beach_scene",
+                    drawTypeDescription: "a serene pixelated beach with gentle waves and a distant sunset"
+                },
+                {
+                    concept: "Majestic pixel mountains under a clear sky, inspiring strength and awe.",
+                    palette: ["#A9A9A9", "#778899", "#B0C4DE", "#ADD8E6", "#6A5ACD"],
+                    moodTags: ["strong", "awe", "calm", "nature", "peaceful"],
+                    style: "Nature",
+                    drawType: "mountain_scene",
+                    drawTypeDescription: "majestic pixel mountains under a clear sky"
+                },
+                {
+                    concept: "A lively pixel garden with various blooming flowers and buzzing pixel bees.",
+                    palette: ["#FFCC00", "#FF6666", "#66FF66", "#33CCFF", "#FF99CC", "#7CFC00"],
+                    moodTags: ["lively", "joyful", "vibrant", "nature", "playful"],
+                    style: "Nature",
+                    drawType: "garden_scene",
+                    drawTypeDescription: "a lively pixel garden with various blooming flowers and buzzing pixel bees"
+                },
+                {
+                    concept: "A pixelated night sky filled with countless twinkling stars and a crescent moon.",
+                    palette: ["#000033", "#191970", "#4682B4", "#F0E68C", "#FFFFFF"],
+                    moodTags: ["dreamy", "wonder", "peaceful", "calm", "cosmic"],
+                    style: "Nature",
+                    drawType: "starry_sky",
+                    drawTypeDescription: "a pixelated night sky filled with countless twinkling stars and a crescent moon"
+                },
+                {
+                    concept: "Small, happy pixel birds flying freely in a bright, open sky.",
+                    palette: ["#87CEEB", "#ADD8E6", "#90EE90", "#FFD700", "#FFA500"],
+                    moodTags: ["freedom", "joyful", "lively", "nature", "energetic"],
+                    style: "Nature",
+                    drawType: "birds_flying",
+                    drawTypeDescription: "small, happy pixel birds flying freely in a bright, open sky"
+                },
+                // NEW GEOMETRIC CONCEPTS
+                {
+                    concept: "A harmonious composition of pixelated circles and ellipses, flowing gracefully.",
+                    palette: ["#6495ED", "#ADD8E6", "#B0E0E6", "#DDA0DD", "#FFDAB9"],
+                    moodTags: ["harmonious", "balanced", "flowing", "geometric", "calm"],
+                    style: "Geometric",
+                    drawType: "circle_ellipse_composition",
+                    drawTypeDescription: "a harmonious composition of pixelated circles and ellipses"
+                },
+                {
+                    concept: "A bold arrangement of pixelated triangles and rhombuses, creating dynamic patterns.",
+                    palette: ["#FF6347", "#FFD700", "#00BFFF", "#7B68EE", "#ADFF2F"],
+                    moodTags: ["dynamic", "bold", "structured", "geometric", "energetic"],
+                    style: "Geometric",
+                    drawType: "triangle_rhombus_composition",
+                    drawTypeDescription: "a bold arrangement of pixelated triangles and rhombuses"
+                },
+                // NEW ALGORITHMS
+                {
+                    concept: "A complex, self-similar pattern of squares nested within each other, representing infinite possibilities.",
+                    palette: ["#4CAF50", "#8BC34A", "#CDDC39", "#FFEB3B", "#FFC107"],
+                    moodTags: ["complex", "infinite", "growth", "structured", "thoughtful"],
+                    style: "Geometric",
+                    drawType: "recursive_squares",
+                    drawTypeDescription: "a complex, self-similar pattern of squares"
+                },
+                {
+                    concept: "A beautiful, radially symmetric pattern resembling a mandala, promoting balance and harmony.",
+                    palette: ["#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#03A9F4"],
+                    moodTags: ["balanced", "harmonious", "peaceful", "meditative", "focused"],
+                    style: "Geometric",
+                    drawType: "radial_pattern",
+                    drawTypeDescription: "a beautiful, radially symmetric pattern"
+                },
+                {
+                    concept: "A serene scene with gentle snowfall, evoking quiet contemplation and peace.",
+                    palette: ["#B0E0E6", "#ADD8E6", "#E0FFFF", "#F0F8FF", "#A9A9A9"],
+                    moodTags: ["calm", "peaceful", "quiet", "serene", "contemplative"],
+                    style: "Nature",
+                    drawType: "snowfall",
+                    drawTypeDescription: "a serene scene with gentle snowfall"
+                },
+                {
+                    concept: "A reflective scene with soft raindrops falling, suggesting introspection and renewal.",
+                    palette: ["#6A5ACD", "#4682B4", "#778899", "#B0C4DE", "#D3D3D3"],
+                    moodTags: ["reflective", "quiet", "renewal", "introspection", "calm"],
+                    style: "Nature",
+                    drawType: "raindrops",
+                    drawTypeDescription: "a reflective scene with soft raindrops falling"
+                },
+                // SAD EMOTION CONCEPTS (These will be filtered out if a positive mood is detected)
+                {
+                    concept: "A quiet, reflective scene of gentle rain falling on a muted landscape.",
+                    palette: ["#4682B4", "#6A5ACD", "#778899", "#A9A9A9", "#B0C4DE"], // Steel Blue, Slate Blue, Light Slate Gray, Dark Gray, Light Steel Blue
+                    moodTags: ["sad", "melancholic", "gloomy", "reflective", "calm", "quiet"],
+                    style: "Abstract",
+                    drawType: "falling_elements",
+                    drawTypeDescription: "a quiet scene with gentle falling elements, suggesting contemplation"
+                },
+                {
+                    concept: "A desolate, sparse landscape under a fading sky, emphasizing loneliness.",
+                    palette: ["#778899", "#A9A9A9", "#B0C4DE", "#D3D3D3", "#696969"], // Light Slate Gray, Dark Gray, Light Steel Blue, Light Gray, Dim Gray
+                    moodTags: ["lonely", "wistful", "pensive", "somber", "introspective"],
+                    style: "Abstract",
+                    drawType: "sparse_elements",
+                    drawTypeDescription: "a desolate landscape with sparse elements, emphasizing loneliness"
+                },
+                {
+                    concept: "A muted abstract composition with colors slowly fading, representing a quiet transition.",
+                    palette: ["#6A5ACD", "#4682B4", "#7B68EE", "#DDA0DD", "#B0E0E6"], // Slate Blue, Steel Blue, Medium Slate Blue, Plum, Powder Blue
+                    moodTags: ["melancholic", "reflective", "wistful", "nostalgic", "calm"],
+                    style: "Abstract",
+                    drawType: "gradient_fade",
+                    drawTypeDescription: "a muted abstract composition with colors slowly fading"
+                },
+                // NEW STYLES ADDED
+                {
+                    concept: "A field of scattered, glowing dots creating a dreamy, ethereal effect.",
+                    palette: ["#FFD700", "#FFA500", "#87CEEB", "#90EE90", "#FF69B4"],
+                    moodTags: ["dreamy", "ethereal", "calm", "wonder", "subtle"],
+                    style: "Abstract",
+                    drawType: "scattered_dots",
+                    drawTypeDescription: "a field of scattered, glowing dots"
+                },
+                {
+                    concept: "A smooth horizontal gradient transitioning from warm to cool colors, representing balance.",
+                    palette: ["#FFCC33", "#FF9900", "#66CCFF", "#99FF99", "#FFCCCC"],
+                    moodTags: ["balanced", "calm", "harmonious", "transition"],
+                    style: "Abstract",
+                    drawType: "horizontal_gradient",
+                    drawTypeDescription: "a smooth horizontal gradient"
+                },
+                {
+                    concept: "A serene vertical gradient shifting from light to dark, evoking depth and tranquility.",
+                    palette: ["#ADD8E6", "#87CEEB", "#6495ED", "#4682B4", "#7B68EE"],
+                    moodTags: ["serene", "tranquil", "depth", "calm"],
+                    style: "Abstract",
+                    drawType: "vertical_gradient",
+                    drawTypeDescription: "a serene vertical gradient"
+                },
+                {
+                    concept: "A vibrant composition of randomly sized and colored rectangles, full of playful energy.",
+                    palette: ["#FF4500", "#FFD700", "#ADFF2F", "#00BFFF", "#FF1493"],
+                    moodTags: ["playful", "energetic", "dynamic", "bold", "vibrant"],
+                    style: "Geometric",
+                    drawType: "random_rectangles",
+                    drawTypeDescription: "a vibrant composition of randomly sized and colored rectangles"
+                }
+            ], []);
 
-      {generatedImages.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Your Mood Gallery</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {generatedImages.map((imgObj, idx) => (
-              <div key={idx} className="flex flex-col items-center">
-                <img
-                  src={imgObj.url}
-                  alt={`Pixel Art ${idx + 1}`}
-                  className="w-24 h-24 rounded shadow image-rendering-pixelated border border-gray-300"
-                />
-                <span className="text-xs text-gray-600 mt-1">Mood: {imgObj.mood || 'N/A'}</span>
-                <button
-                  onClick={() => downloadImage(imgObj.url, idx)}
-                  className="mt-1 text-xs text-blue-600 hover:underline"
-                >
-                  Download
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+            const artStyles = React.useMemo(() => [
+                'All',
+                ...new Set(positiveArtConceptsAndPalettes.map(item => item.style))
+            ], [positiveArtConceptsAndPalettes]);
 
-ReactDOM.render(<App />, document.getElementById('root'));
-</script>
+            const hexToColorName = React.useMemo(() => ({
+                "#FFD700": "Gold", "#FFA500": "Orange", "#87CEEB": "Sky Blue", "#90EE90": "Light Green", "#FF69B4": "Hot Pink",
+                "#FFCC33": "Golden Yellow", "#FF9900": "Orange", "#66CCFF": "Light Blue", "#99FF99": "Mint Green", "#FFCCCC": "Light Pink",
+                "#FFCC00": "Yellow", "#FF6666": "Red-Orange", "#66FF66": "Bright Green", "#33CCFF": "Cerulean", "#FF99CC": "Pink",
+                "#ADD8E6": "Light Blue", "#6495ED": "Cornflower Blue", "#4682B4": "Steel Blue", "#7B68EE": "Medium Slate Blue",
+                "#F0E68C": "Khaki", "#DAA520": "Goldenrod", "#DDA0DD": "Plum", "#FF4500": "Orange Red", "#ADFF2F": "Green Yellow",
+                "#00BFFF": "Deep Sky Blue", "#FF1493": "Deep Pink", "#87CEFA": "Light Sky Blue", "#6A5ACD": "Slate Blue",
+                "#B0E0E6": "Powder Blue", "#FFDAB9": "Peach Puff", "#F08080": "Light Coral", "#7CFC00": "Lawn Green",
+                "#32CD32": "Lime Green", "#FFC0CB": "Pink", "#9370DB": "Medium Purple", "#A9A9A9": "Dark Gray",
+                "#778899": "Light Slate Gray", "#FF6347": "Tomato", "#D3D3D3": "Light Gray", "#696969": "Dim Gray",
+                "#4CAF50": "Dark Green", "#8BC34A": "Lime Green", "#CDDC39": "Light Lime Green", "#FFEB3B": "Lemon Yellow", "#FFC107": "Amber",
+                "#9C27B0": "Dark Purple", "#673AB7": "Deep Purple", "#3F51B5": "Indigo", "#2196F3": "Blue", "#03A9F4": "Light Blue",
+                "#E0FFFF": "Light Cyan", "#F0F8FF": "Alice Blue"
+            }), []);
 
+            // Removed logInteraction function entirely
+
+
+            const drawPixelArt = React.useCallback((canvas, concept, palette, pixelSize, drawType, moodIntensity, animate = true) => {
+                const ctx = canvas.getContext('2d');
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+                const sortedPalette = [...palette].sort((a, b) => {
+                    const hexToRgb = hex => {
+                        const r = parseInt(hex.slice(1, 3), 16);
+                        const g = parseInt(hex.slice(3, 5), 16);
+                        const b = parseInt(hex.slice(5, 7), 16);
+                        return r + g + b;
+                    };
+                    return hexToRgb(b) - hexToRgb(a);
+                });
+
+                const effectivePalette = sortedPalette.slice(0, Math.max(1, Math.floor(sortedPalette.length * (moodIntensity / 100))));
+                if (effectivePalette.length === 0) effectivePalette.push(sortedPalette[0]);
+
+                const backgroundColor = effectivePalette[0];
+                ctx.fillStyle = backgroundColor;
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                const pixelsToDraw = [];
+
+                const addPixel = (x, y, color, alpha = 1.0) => {
+                    pixelsToDraw.push({ x, y, color, alpha });
+                };
+
+                // Helper function to draw a pixelated circle
+                const drawPixelCircle = (centerX, centerY, radius, color) => {
+                    for (let y = -radius; y <= radius; y += pixelSize) {
+                        for (let x = -radius; x <= radius; x += pixelSize) {
+                            if (x * x + y * y <= radius * radius) {
+                                addPixel(centerX + x, centerY + y, color);
+                            }
+                        }
+                    }
+                };
+
+                // Helper function to draw a pixelated ellipse
+                const drawPixelEllipse = (centerX, centerY, radiusX, radiusY, color) => {
+                    for (let y = -radiusY; y <= radiusY; y += pixelSize) {
+                        for (let x = -radiusX; x <= radiusX; x += pixelSize) {
+                            if ((x * x) / (radiusX * radiusX) + (y * y) / (radiusY * radiusY) <= 1) {
+                                addPixel(centerX + x, centerY + y, color);
+                            }
+                        }
+                    }
+                };
+
+                // Helper function to draw a pixelated triangle (filled)
+                const drawPixelTriangle = (p1, p2, p3, color) => {
+                    // Sort points by Y-coordinate
+                    const points = [p1, p2, p3].sort((a, b) => a.y - b.y);
+                    const [pTop, pMid, pBot] = points;
+
+                    // Function to calculate X-coordinate on a line given Y
+                    const getXOnLine = (pA, pB, y) => {
+                        if (pA.y === pB.y) return pA.x; // Horizontal line
+                        return pA.x + (pB.x - pA.x) * (y - pA.y) / (pB.y - pA.y);
+                    };
+
+                    // Draw top half (from pTop to pMid)
+                    for (let y = pTop.y; y < pMid.y; y += pixelSize) {
+                        const xLeft = getXOnLine(pTop, pMid, y);
+                        const xRight = getXOnLine(pTop, pBot, y);
+                        for (let x = Math.min(xLeft, xRight); x < Math.max(xLeft, xRight); x += pixelSize) {
+                            addPixel(Math.floor(x / pixelSize) * pixelSize, Math.floor(y / pixelSize) * pixelSize, color);
+                        }
+                    }
+
+                    // Draw bottom half (from pMid to pBot)
+                    for (let y = pMid.y; y <= pBot.y; y += pixelSize) {
+                        const xLeft = getXOnLine(pMid, pBot, y);
+                        const xRight = getXOnLine(pTop, pBot, y);
+                        for (let x = Math.min(xLeft, xRight); x < Math.max(xLeft, xRight); x += pixelSize) {
+                            addPixel(Math.floor(x / pixelSize) * pixelSize, Math.floor(y / pixelSize) * pixelSize, color);
+                        }
+                    }
+                };
+
+                // Helper function to draw a pixelated rhombus
+                const drawPixelRhombus = (centerX, centerY, halfWidth, halfHeight, color) => {
+                    for (let y = -halfHeight; y <= halfHeight; y += pixelSize) {
+                        for (let x = -halfWidth; x <= halfWidth; x += pixelSize) {
+                            // Rhombus equation: |x/halfWidth| + |y/halfHeight| <= 1
+                            if (Math.abs(x / halfWidth) + Math.abs(y / halfHeight) <= 1) {
+                                addPixel(centerX + x, centerY + y, color);
+                            }
+                        }
+                    }
+                };
+
+                // Helper function to draw pixelated clouds
+                const drawPixelClouds = (cloudColor) => {
+                    const numClouds = Math.floor(Math.random() * 3) + 2; // 2 to 4 clouds
+                    for (let i = 0; i < numClouds; i++) {
+                        const cloudX = Math.floor(Math.random() * (canvasWidth / pixelSize / 1.2)) * pixelSize;
+                        const cloudY = Math.floor(Math.random() * (canvasHeight / pixelSize / 4)) * pixelSize; // Upper quarter of the canvas
+                        const cloudWidth = Math.floor(Math.random() * (canvasWidth / pixelSize / 5) + 5) * pixelSize; // Vary width
+                        const cloudHeight = Math.floor(Math.random() * (canvasHeight / pixelSize / 10) + 3) * pixelSize; // Vary height
+
+                        // Draw a rough oval shape for the cloud
+                        for (let py = 0; py < cloudHeight; py += pixelSize) {
+                            for (let px = 0; px < cloudWidth; px += pixelSize) {
+                                // Simple oval logic: (x/a)^2 + (y/b)^2 <= 1
+                                const normalizedX = (px - cloudWidth / 2) / (cloudWidth / 2);
+                                const normalizedY = (py - cloudHeight / 2) / (cloudHeight / 2);
+                                if (normalizedX * normalizedX + normalizedY * normalizedY <= 1) {
+                                    addPixel(cloudX + px, cloudY + py, cloudColor, 0.9); // Slightly transparent
+                                }
+                            }
+                        }
+                        // Add some random "fluff" pixels around the main shape
+                        for (let j = 0; j < (cloudWidth * cloudHeight / (pixelSize * pixelSize)) * 0.1; j++) {
+                            const randX = cloudX + Math.floor(Math.random() * cloudWidth / pixelSize) * pixelSize;
+                            const randY = cloudY + Math.floor(Math.random() * cloudHeight / pixelSize) * pixelSize;
+                            if (Math.random() > 0.5) {
+                                addPixel(randX, randY, cloudColor, 0.7);
+                            }
+                        }
+                    }
+                };
+
+
+                switch (drawType) {
+                    case "horizontal_stripes":
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "vertical_stripes":
+                        for (let x = 0; x < canvasWidth; x += pixelSize) {
+                            const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            for (let y = 0; y < canvasHeight; y += pixelSize) {
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "checkerboard":
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                const colorIndex = ((x / pixelSize) + (y / pixelSize)) % effectivePalette.length;
+                                addPixel(x, y, effectivePalette[colorIndex]);
+                            }
+                        }
+                        break;
+                    case "diagonal_lines":
+                        const numLines = Math.floor(canvasWidth / pixelSize / 4); // Number of diagonal segments
+                        for (let i = 0; i < numLines; i++) {
+                            const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const startX = i * pixelSize * 4;
+                            const startY = 0;
+                            for (let offset = 0; ; offset++) {
+                                const x = startX + offset * pixelSize;
+                                const y = startY + offset * pixelSize;
+                                if (x >= canvasWidth || y >= canvasHeight) break;
+                                addPixel(x, y, color);
+                            }
+                            const startX2 = 0;
+                            const startY2 = i * pixelSize * 4;
+                            for (let offset = 0; ; offset++) {
+                                const x = startX2 + offset * pixelSize;
+                                const y = startY2 + offset * pixelSize;
+                                if (x >= canvasWidth || y >= canvasHeight) break;
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "concentric_squares":
+                        const maxDim = Math.max(canvasWidth, canvasHeight);
+                        const numSquares = Math.floor(maxDim / (pixelSize * 4)); // Adjust spacing of squares
+                        for (let i = 0; i < numSquares; i++) {
+                            const color = effectivePalette[i % effectivePalette.length];
+                            const currentSize = (i + 1) * pixelSize * 4;
+                            const startX = (canvasWidth - currentSize) / 2;
+                            const startY = (canvasHeight - currentSize) / 2;
+
+                            if (startX < 0 || startY < 0) continue; // Avoid drawing outside canvas
+
+                            // Top horizontal line
+                            for (let x = startX; x < startX + currentSize; x += pixelSize) {
+                                addPixel(x, startY, color);
+                            }
+                            // Bottom horizontal line
+                            for (let x = startX; x < startX + currentSize; x += pixelSize) {
+                                addPixel(x, startY + currentSize - pixelSize, color);
+                            }
+                            // Left vertical line
+                            for (let y = startY; y < startY + currentSize; y += pixelSize) {
+                                addPixel(startX, y, color);
+                            }
+                            // Right vertical line
+                            for (let y = startY; y < startY + currentSize; y += pixelSize) {
+                                addPixel(startX + currentSize - pixelSize, y, color);
+                            }
+                        }
+                        break;
+                    case "noise_pattern":
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                if (Math.random() > 0.3) { // Density of noise
+                                    const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                                    addPixel(x, y, color, 0.5 + Math.random() * 0.5); // Vary alpha for "grainy" effect
+                                }
+                            }
+                        }
+                        break;
+                    case "beach_scene":
+                        // Sand (bottom 1/3)
+                        for (let y = Math.floor(canvasHeight * 2 / 3); y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[1] || "#FFDAB9"); // Sand color
+                            }
+                        }
+                        // Water (middle 1/3)
+                        for (let y = Math.floor(canvasHeight * 1 / 3); y < Math.floor(canvasHeight * 2 / 3); y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[2] || "#87CEFA"); // Water color
+                            }
+                        }
+                        // Sky (top 1/3)
+                        for (let y = 0; y < Math.floor(canvasHeight * 1 / 3); y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[3] || "#66CCFF"); // Sky color
+                            }
+                        }
+                        // Sun
+                        drawPixelCircle(canvasWidth * 0.8, canvasHeight * 0.2, pixelSize * 4, effectivePalette[0] || "#FFA500");
+                        // Clouds
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
+                        break;
+                    case "mountain_scene":
+                        // Sky
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[3] || "#ADD8E6"); // Sky color
+                            }
+                        }
+                        // Mountains (base)
+                        const mountainColor = effectivePalette[1] || "#778899";
+                        const numMountains = Math.floor(Math.random() * 2) + 2;
+                        for (let i = 0; i < numMountains; i++) {
+                            const mountainBaseY = canvasHeight; // Base of the mountain is at the bottom of the canvas
+                            const mountainPeakY = Math.floor(canvasHeight * (0.3 + Math.random() * 0.3)); // Peak is higher up
+                            const mountainHeight = mountainBaseY - mountainPeakY;
+                            const mountainBaseWidth = Math.floor((canvasWidth / numMountains / 2 + Math.random() * canvasWidth / numMountains / 2) / pixelSize) * pixelSize;
+                            const mountainStartX = Math.floor(Math.random() * (canvasWidth - mountainBaseWidth) / pixelSize) * pixelSize;
+
+                            for (let y = mountainBaseY; y >= mountainPeakY; y -= pixelSize) {
+                                const progress = (mountainBaseY - y) / mountainHeight; // 0 at base, 1 at peak
+                                const currentRowWidth = mountainBaseWidth * (1 - progress);
+                                const currentStartX = mountainStartX + (mountainBaseWidth - currentRowWidth) / 2;
+
+                                for (let x = currentStartX; x < currentStartX + currentRowWidth; x += pixelSize) {
+                                    if (x >= 0 && x < canvasWidth) {
+                                        addPixel(x, y, mountainColor);
+                                    }
+                                }
+                            }
+                        }
+                        // Sun for mountain scene
+                        drawPixelCircle(canvasWidth * 0.8, canvasHeight * 0.2, pixelSize * 4, effectivePalette[0] || "#FFD700");
+                        // Clouds
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
+                        break;
+                    case "garden_scene":
+                        // Ground
+                        for (let y = Math.floor(canvasHeight * 0.6); y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[5] || "#7CFC00"); // Green ground
+                            }
+                        }
+                        // Sky
+                        for (let y = 0; y < Math.floor(canvasHeight * 0.6); y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[3] || "#ADD8E6"); // Blue sky
+                            }
+                        }
+                        // Flowers
+                        const numFlowers = Math.floor(Math.random() * 10) + 5;
+                        for (let i = 0; i < numFlowers; i++) {
+                            const flowerX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const flowerY = Math.floor(Math.random() * (canvasHeight * 0.4 / pixelSize) + (canvasHeight * 0.6 / pixelSize)) * pixelSize;
+                            const flowerColor = effectivePalette[Math.floor(Math.random() * (effectivePalette.length - 1)) + 1]; // Pick a non-ground color
+                            drawPixelCircle(flowerX, flowerY, pixelSize * 2, flowerColor);
+                        }
+                        // Clouds
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
+                        break;
+                    case "starry_sky":
+                        // Dark background
+                        ctx.fillStyle = effectivePalette[0] || "#000033";
+                        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                        // Stars
+                        const numStars = Math.floor(Math.random() * 100) + 50;
+                        for (let i = 0; i < numStars; i++) {
+                            const starX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const starY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const starColor = effectivePalette[Math.floor(Math.random() * (effectivePalette.length - 1)) + 1] || "#FFFFFF";
+                            addPixel(starX, starY, starColor); // Single pixel star
+                            if (Math.random() > 0.7) { // Occasionally draw a cross shape for a bigger star
+                                addPixel(starX + pixelSize, starY, starColor);
+                                addPixel(starX - pixelSize, starY, starColor);
+                                addPixel(starX, starY + pixelSize, starColor);
+                                addPixel(starX, starY - pixelSize, starColor);
+                            }
+                        }
+                        // Moon (optional)
+                        if (Math.random() > 0.5) {
+                            drawPixelCircle(canvasWidth * 0.2, canvasHeight * 0.2, pixelSize * 5, effectivePalette[effectivePalette.length - 1] || "#F0E68C");
+                        }
+                        // Clouds (subtle, dark clouds for night sky)
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 2] || "#A9A9A9"); // Use a darker color for night clouds
+                        break;
+                    case "birds_flying":
+                        // Sky background
+                        ctx.fillStyle = effectivePalette[0] || "#87CEEB";
+                        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                        // Birds
+                        const numBirds = Math.floor(Math.random() * 8) + 3;
+                        const birdColor = effectivePalette[1] || "#778899";
+                        for (let i = 0; i < numBirds; i++) {
+                            const birdX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const birdY = Math.floor(Math.random() * (canvasHeight * 0.8 / pixelSize)) * pixelSize;
+                            // Simple V-shape bird
+                            addPixel(birdX, birdY, birdColor);
+                            addPixel(birdX + pixelSize, birdY + pixelSize, birdColor);
+                            addPixel(birdX + pixelSize * 2, birdY, birdColor);
+                        }
+                        // Clouds
+                        drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
+                        break;
+                    case "circle_ellipse_composition":
+                        const numShapesCE = Math.floor(Math.random() * 8) + 5;
+                        for (let i = 0; i < numShapesCE; i++) {
+                            const shapeColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const centerX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const centerY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const radiusX = Math.floor(Math.random() * (canvasWidth / pixelSize / 8) + 2) * pixelSize;
+                            const radiusY = Math.floor(Math.random() * (canvasHeight / pixelSize / 8) + 2) * pixelSize;
+
+                            if (Math.random() > 0.5) {
+                                drawPixelCircle(centerX, centerY, Math.min(radiusX, radiusY), shapeColor);
+                            } else {
+                                drawPixelEllipse(centerX, centerY, radiusX, radiusY, shapeColor);
+                            }
+                        }
+                        break;
+                    case "triangle_rhombus_composition":
+                        const numShapesTR = Math.floor(Math.random() * 8) + 5;
+                        for (let i = 0; i < numShapesTR; i++) {
+                            const shapeColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const centerX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const centerY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const size = Math.floor(Math.random() * (canvasWidth / pixelSize / 8) + 2) * pixelSize;
+
+                            if (Math.random() > 0.5) {
+                                // Draw a triangle
+                                const p1 = { x: centerX, y: centerY - size / 2 };
+                                const p2 = { x: centerX - size / 2, y: centerY + size / 2 };
+                                const p3 = { x: centerX + size / 2, y: centerY + size / 2 };
+                                drawPixelTriangle(p1, p2, p3, shapeColor);
+                            } else {
+                                // Draw a rhombus
+                                drawPixelRhombus(centerX, centerY, size / 2, size / 3, shapeColor);
+                            }
+                        }
+                        break;
+                    case "recursive_squares":
+                        const drawSquareRecursive = (x, y, size, depth, maxDepth, colorIndex) => {
+                            if (depth > maxDepth || size < pixelSize * 2) return;
+
+                            const color = effectivePalette[colorIndex % effectivePalette.length];
+                            for (let px = x; px < x + size; px += pixelSize) {
+                                for (let py = y; py < y + size; py += pixelSize) {
+                                    if (px === x || px === x + size - pixelSize || py === y || py === y + size - pixelSize) {
+                                        addPixel(px, py, color);
+                                    }
+                                }
+                            }
+
+                            const newSize = size * 0.7;
+                            const newX = x + (size - newSize) / 2;
+                            const newY = y + (size - newSize) / 2;
+                            drawSquareRecursive(newX, newY, newSize, depth + 1, maxDepth, colorIndex + 1);
+                        };
+                        drawSquareRecursive(0, 0, canvasWidth, 0, 4, 0); // Start recursion
+                        break;
+                    case "radial_pattern":
+                        const centerX = canvasWidth / 2;
+                        const centerY = canvasHeight / 2;
+                        const numRings = Math.floor(Math.random() * 3) + 3; // 3 to 5 rings
+                        const maxRadius = Math.min(centerX, centerY) * 0.9;
+
+                        for (let r = 1; r <= numRings; r++) {
+                            const currentRadius = (r / numRings) * maxRadius;
+                            const numElementsInRing = Math.floor(currentRadius / pixelSize / 2) * 6; // More elements for larger rings
+                            const color = effectivePalette[r % effectivePalette.length];
+
+                            for (let i = 0; i < numElementsInRing; i++) {
+                                const angle = (i / numElementsInRing) * Math.PI * 2;
+                                const x = centerX + currentRadius * Math.cos(angle);
+                                const y = centerY + currentRadius * Math.sin(angle);
+                                drawPixelCircle(x, y, pixelSize * (Math.random() > 0.7 ? 2 : 1), color); // Vary size
+                            }
+                        }
+                        break;
+                    case "snowfall":
+                        // Base sky
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[0] || "#ADD8E6"); // Light blue sky
+                            }
+                        }
+                        // Falling snowflakes
+                        const numSnowflakes = Math.floor(canvasWidth * canvasHeight / (pixelSize * pixelSize) / 10);
+                        const snowflakeColor = effectivePalette[effectivePalette.length - 1] || "#FFFFFF";
+                        for (let i = 0; i < numSnowflakes; i++) {
+                            const sx = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const sy = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            addPixel(sx, sy, snowflakeColor, 0.8 + Math.random() * 0.2); // Vary transparency
+                        }
+                        break;
+                    case "raindrops":
+                        // Base sky/ground
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, effectivePalette[0] || "#6A5ACD"); // Muted sky
+                            }
+                        }
+                        // Falling raindrops (short lines)
+                        const numRaindrops = Math.floor(canvasWidth * canvasHeight / (pixelSize * pixelSize) / 8);
+                        const dropColor = effectivePalette[effectivePalette.length - 1] || "#B0C4DE"; // Light blue/gray
+                        for (let i = 0; i < numRaindrops; i++) {
+                            const rx = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const ry = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const dropLength = pixelSize * (Math.random() > 0.5 ? 2 : 3); // Vary length
+                            for (let dy = 0; dy < dropLength; dy += pixelSize) {
+                                addPixel(rx, ry + dy, dropColor, 0.6 + Math.random() * 0.3); // Vary transparency
+                            }
+                        }
+                        break;
+                    case "falling_elements":
+                        const elementColor = effectivePalette[1] || "#6A5ACD";
+                        const numElements = Math.floor(canvasWidth * canvasHeight / (pixelSize * pixelSize) / 50); // Density
+                        for (let i = 0; i < numElements; i++) {
+                            const startX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const startY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const elementSize = pixelSize * (Math.random() > 0.5 ? 1 : 2); // Vary size
+                            const elementAlpha = 0.5 + Math.random() * 0.5; // Vary transparency
+
+                            // Draw a small vertical line or square for rain/falling element
+                            for (let yOffset = 0; yOffset < elementSize; yOffset += pixelSize) {
+                                addPixel(startX, startY + yOffset, elementColor, elementAlpha);
+                            }
+                        }
+                        break;
+                    case "gradient_fade":
+                        const gradientColors = effectivePalette.length > 1 ? effectivePalette : ["#4682B4", "#778899"];
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            const colorIndex = Math.floor((y / canvasHeight) * gradientColors.length);
+                            const color = gradientColors[colorIndex];
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "sparse_elements":
+                        const sparseColor = effectivePalette[1] || "#778899";
+                        const numSparseElements = Math.floor(Math.random() * 5) + 3; // Few elements
+                        for (let i = 0; i < numSparseElements; i++) {
+                            const elementX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const elementY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const elementSize = pixelSize * (Math.random() > 0.5 ? 2 : 3); // Slightly larger elements
+                            for (let py = 0; py < elementSize; py += pixelSize) {
+                                for (let px = 0; px < elementSize; px += pixelSize) {
+                                    if (Math.random() > 0.4) { // Make them somewhat irregular
+                                        addPixel(elementX + px, elementY + py, sparseColor, 0.7 + Math.random() * 0.3);
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    case "scattered_dots":
+                        const dotColor = effectivePalette[1] || "#FFFFFF";
+                        const numDots = Math.floor(canvasWidth * canvasHeight / (pixelSize * pixelSize) / 5); // Density of dots
+                        for (let i = 0; i < numDots; i++) {
+                            const dx = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const dy = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            addPixel(dx, dy, dotColor, 0.7 + Math.random() * 0.3); // Vary transparency
+                        }
+                        break;
+                    case "horizontal_gradient":
+                        const gradientColorsH = effectivePalette.length > 1 ? effectivePalette : ["#FFD700", "#66CCFF"];
+                        for (let x = 0; x < canvasWidth; x += pixelSize) {
+                            const colorIndex = Math.floor((x / canvasWidth) * gradientColorsH.length);
+                            const color = gradientColorsH[colorIndex];
+                            for (let y = 0; y < canvasHeight; y += pixelSize) {
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "vertical_gradient":
+                        const gradientColorsV = effectivePalette.length > 1 ? effectivePalette : ["#ADD8E6", "#4682B4"];
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            const colorIndex = Math.floor((y / canvasHeight) * gradientColorsV.length);
+                            const color = gradientColorsV[colorIndex];
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                addPixel(x, y, color);
+                            }
+                        }
+                        break;
+                    case "random_rectangles":
+                        const numRectangles = Math.floor(Math.random() * 10) + 5; // 5 to 14 rectangles
+                        for (let i = 0; i < numRectangles; i++) {
+                            const rectColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const rectX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const rectY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const rectWidth = Math.floor(Math.random() * (canvasWidth / pixelSize / 3) + 2) * pixelSize;
+                            const rectHeight = Math.floor(Math.random() * (canvasHeight / pixelSize / 3) + 2) * pixelSize;
+
+                            for (let px = rectX; px < rectX + rectWidth; px += pixelSize) {
+                                for (let py = rectY; py < rectY + rectHeight; py += pixelSize) {
+                                    if (px < canvasWidth && py < canvasHeight) {
+                                        addPixel(px, py, rectColor, 0.8 + Math.random() * 0.2); // Vary transparency
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    case "random_pixels":
+                    default:
+                        for (let y = 0; y < canvasHeight; y += pixelSize) {
+                            for (let x = 0; x < canvasWidth; x += pixelSize) {
+                                const color = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                                if (Math.random() > 0.6) {
+                                    addPixel(x, y, color);
+                                }
+                            }
+                        }
+                        const numShapes = Math.floor(Math.random() * 3) + 2;
+                        for (let i = 0; i < numShapes; i++) {
+                            const shapeColor = effectivePalette[Math.floor(Math.random() * effectivePalette.length)];
+                            const startX = Math.floor(Math.random() * (canvasWidth / pixelSize)) * pixelSize;
+                            const startY = Math.floor(Math.random() * (canvasHeight / pixelSize)) * pixelSize;
+                            const shapeWidth = Math.floor(Math.random() * (canvasWidth / pixelSize / 4) + 1) * pixelSize;
+                            const shapeHeight = Math.floor(Math.random() * (canvasHeight / pixelSize / 4) + 1) * pixelSize;
+
+                            if (Math.random() > 0.5) {
+                                for (let px = startX; px < startX + shapeWidth; px += pixelSize) {
+                                    for (let py = startY; py < startY + shapeHeight; py += pixelSize) {
+                                        addPixel(px, py, shapeColor, 0.6 + Math.random() * 0.3);
+                                    }
+                                }
+                            } else {
+                                const radius = Math.min(shapeWidth, shapeHeight) / 2;
+                                drawPixelCircle(startX + radius, startY + radius, radius, shapeColor); // Use helper
+                            }
+                        }
+                        // Clouds for abstract/random scenes if they have a sky-like background
+                        if (effectivePalette.length > 1) { // Ensure there are enough colors for clouds
+                            drawPixelClouds(effectivePalette[effectivePalette.length - 1] || "#FFFFFF");
+                        }
+                        break;
+                }
+
+                pixelsToDraw.sort(() => Math.random() - 0.5);
+
+                if (animate) {
+                    setIsDrawingAnimating(true);
+                    let index = 0;
+                    const pixelsPerFrame = Math.max(1, Math.floor(pixelsToDraw.length / 20));
+
+                    const animateDrawing = () => {
+                        const endIndex = Math.min(index + pixelsPerFrame, pixelsToDraw.length);
+                        for (let i = index; i < endIndex; i++) {
+                            const p = pixelsToDraw[i];
+                            ctx.globalAlpha = p.alpha || 1.0;
+                            ctx.fillStyle = p.color;
+                            ctx.fillRect(p.x, p.y, pixelSize, pixelSize);
+                        }
+                        index = endIndex;
+                        if (index < pixelsToDraw.length) {
+                            requestAnimationFrame(animateDrawing);
+                        } else {
+                            setPixelArtDataUrl(canvas.toDataURL('image/png'));
+                            ctx.globalAlpha = 1.0;
+                            setIsDrawingAnimating(false);
+                            setShowPostInteractionRatings(true); // Show ratings after drawing completes
+                        }
+                    };
+                    requestAnimationFrame(animateDrawing);
+                } else {
+                    pixelsToDraw.forEach(p => {
+                        ctx.globalAlpha = p.alpha || 1.0;
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(p.x, p.y, pixelSize, pixelSize);
+                    });
+                    ctx.globalAlpha = 1.0;
+                    setPixelArtDataUrl(canvas.toDataURL('image/png'));
+                    setShowPostInteractionRatings(true); // Show ratings after drawing completes
+                }
+            }, [setIsDrawingAnimating, setPixelArtDataUrl]);
+
+
+            const generateAffirmationInternal = React.useCallback(async () => {
+                setIsAffirmationLoading(true);
+                setAffirmation('');
+                setErrorMessage('');
+                setShowPostInteractionRatings(false); // Hide previous ratings if regenerating
+
+                try {
+                    // Removed logInteraction call
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    const randomAffirmation = positiveAffirmations[Math.floor(Math.random() * positiveAffirmations.length)];
+                    setAffirmation(randomAffirmation);
+                    // Removed logInteraction call
+                    setShowPostInteractionRatings(true); // Show ratings after generation
+                } catch (error) {
+                    console.error('Error generating affirmation:', error);
+                    setErrorMessage(`Error generating affirmation: ${error.message || 'Something went wrong.'}`);
+                    // Removed logInteraction call
+                } finally {
+                    setIsAffirmationLoading(false);
+                }
+            }, [positiveAffirmations, moodRatingBefore, moodInput]);
+
+            const generateArtInternal = React.useCallback(async (isSurprise = false) => {
+                setIsLoading(true);
+                setPixelArtDataUrl('');
+                setArtDescription('');
+                setErrorMessage('');
+                setLlmConcept('');
+                setLlmPalette([]);
+                setLlmDrawType('');
+                setShowSuggestions(false);
+                setShowPostInteractionRatings(false); // Hide previous ratings if regenerating
+
+
+                try {
+                    // Removed logInteraction call
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    let availableArt = positiveArtConceptsAndPalettes;
+
+                    if (selectedArtStyle !== 'All') {
+                        availableArt = availableArt.filter(item => item.style === selectedArtStyle);
+                    }
+
+                    let finalArtData = null;
+                    const lowerCaseMoodWords = moodInput.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+
+                    // Define sad mood keywords and sad-depicting draw types
+                    const sadMoodKeywords = ["sad", "melancholic", "gloomy", "lonely", "reflective", "wistful", "quiet", "pensive", "somber", "introspective", "nostalgic"];
+                    const positiveMoodKeywords = [
+                        "happy", "joyful", "calm", "peaceful", "energetic", "creative", "excited",
+                        "hopeful", "relaxed", "serene", "tranquil", "playful", "bright", "lively",
+                        "focused", "thoughtful", "balanced", "structured", "harmonious", "dreamy",
+                        "wonder", "curious", "imaginative", "renewed", "restful", "vibrant", "powerful",
+                        "fresh", "growth", "new beginnings", "optimistic", "strong", "inspired", "grateful"
+                    ];
+                    const sadDepictingDrawTypes = ["falling_elements", "sparse_elements", "gradient_fade"];
+
+                    let positiveKeywordCount = 0;
+                    let sadKeywordCount = 0;
+
+                    lowerCaseMoodWords.forEach(word => {
+                        if (positiveMoodKeywords.includes(word)) {
+                            positiveKeywordCount++;
+                        }
+                        if (sadMoodKeywords.includes(word)) {
+                            sadKeywordCount++;
+                        }
+                    });
+
+                    // Determine the overall sentiment for art generation
+                    // If there's a positive keyword, or if it's a surprise/empty input, lean positive.
+                    // If only sad keywords are present, still aim for uplifting art (as per app's goal).
+                    const shouldGenerateUpliftingArt = isSurprise || !moodInput.trim() || positiveKeywordCount > 0 || sadKeywordCount > 0;
+
+                    // Filter out sad-depicting art if the goal is uplifting art
+                    let eligibleArtConcepts = availableArt.filter(item =>
+                        shouldGenerateUpliftingArt ? !sadDepictingDrawTypes.includes(item.drawType) : true
+                    );
+
+                    // If no eligible art concepts after filtering, fall back to all positive concepts
+                    if (eligibleArtConcepts.length === 0) {
+                        eligibleArtConcepts = availableArt.filter(item => !sadDepictingDrawTypes.includes(item.drawType));
+                        if (eligibleArtConcepts.length === 0) {
+                            setErrorMessage("No suitable art concepts found for your mood and style. Try adjusting your input or selecting 'All' styles.");
+                            setIsLoading(false);
+                            // Removed logInteraction call
+                            return;
+                        }
+                    }
+
+                    // Determine the pool of candidates for selection based on mood matching
+                    let candidatesForSelection = [];
+                    if (isSurprise || !moodInput.trim()) {
+                        // If surprise or empty mood, pick from all eligible concepts
+                        candidatesForSelection = eligibleArtConcepts;
+                    } else {
+                        // For specific moods, try to match mood tags
+                        let bestMatchScore = -1;
+                        for (const artItem of eligibleArtConcepts) {
+                            let currentScore = 0;
+                            for (const moodTag of artItem.moodTags) {
+                                if (lowerCaseMoodWords.includes(moodTag)) {
+                                    currentScore++;
+                                }
+                            }
+                            if (currentScore > bestMatchScore) {
+                                bestMatchScore = currentScore;
+                                candidatesForSelection = [artItem]; // Start new list if better match found
+                            } else if (currentScore === bestMatchScore && currentScore > 0) {
+                                candidatesForSelection.push(artItem); // Add to list if same best score
+                            }
+                        }
+                        // If no direct mood-tag matches, fall back to all eligible concepts
+                        if (candidatesForSelection.length === 0) {
+                            candidatesForSelection = eligibleArtConcepts;
+                        }
+                    }
+
+                    // Now, apply the regeneration logic to `candidatesForSelection`
+                    const currentDrawTypeDisplayed = llmDrawType;
+                    let finalCandidatesForRegeneration = candidatesForSelection;
+
+                    if (currentDrawTypeDisplayed) { // Only apply regeneration logic if art is already displayed
+                        const differentDrawTypeCandidates = candidatesForSelection.filter(item =>
+                            item.drawTypeDescription !== currentDrawTypeDisplayed
+                        );
+
+                        if (differentDrawTypeCandidates.length > 0) {
+                            finalCandidatesForRegeneration = differentDrawTypeCandidates;
+                        } else {
+                            // If all current candidates have the same drawType, broaden the search
+                            // to any eligible art concept with a different drawType.
+                            const anyDifferentDrawTypeInEligible = eligibleArtConcepts.filter(item =>
+                                item.drawTypeDescription !== currentDrawTypeDisplayed
+                            );
+                            if (anyDifferentDrawTypeInEligible.length > 0) {
+                                finalCandidatesForRegeneration = anyDifferentDrawTypeInEligible;
+                            }
+                            // If still no different drawType, then finalCandidatesForRegeneration remains
+                            // the original candidatesForSelection (meaning it might repeat drawType but vary concept/palette)
+                        }
+                    }
+
+                    // Pick one randomly from the final candidates
+                    if (finalCandidatesForRegeneration.length > 0) {
+                        finalArtData = finalCandidatesForRegeneration[Math.floor(Math.random() * finalCandidatesForRegeneration.length)];
+                    } else {
+                        // Fallback in case something went wrong with filtering/selection
+                        finalArtData = eligibleArtConcepts[Math.floor(Math.random() * eligibleArtConcepts.length)];
+                    }
+
+
+                    if (!finalArtData) {
+                         setErrorMessage("No art concepts available for the selected style. Try a different mood or 'All' styles.");
+                         // Removed logInteraction call
+                         return;
+                    }
+
+                    const concept = finalArtData.concept;
+                    const palette = finalArtData.palette;
+                    const drawType = finalArtData.drawType || "random_pixels";
+                    const drawTypeDescription = finalArtData.drawTypeDescription || "a pixel art composition";
+
+                    setLlmConcept(concept);
+                    setLlmPalette(palette);
+                    setLlmDrawType(drawTypeDescription);
+
+                    const canvas = canvasRef.current;
+                    if (canvas) {
+                        drawPixelArt(canvas, concept, palette, selectedPixelSize, drawType, moodIntensity, true);
+                        // Removed logInteraction call
+                        // setShowPostInteractionRatings(true) is called by drawPixelArt after animation
+                    } else {
+                        throw new Error('Canvas element not found. This should not happen as canvas is always rendered.');
+                    }
+
+                } catch (error) {
+                    console.error('Error generating art:', error);
+                    setErrorMessage(`Error: ${error.message || 'Something went wrong during art generation. Please try again.'}`);
+                    // Removed logInteraction call
+                } finally {
+                    setIsLoading(false);
+                }
+            }, [moodInput, selectedArtStyle, selectedPixelSize, moodIntensity, positiveArtConceptsAndPalettes, drawPixelArt, llmDrawType, moodRatingBefore]);
+
+            const handleSubmitPostInteractionRatings = React.useCallback(() => {
+                // Removed logInteraction call
+                // Optionally reset ratings after submission
+                setMoodRatingAfter(5);
+                setImpactRating(5);
+                setShowPostInteractionRatings(false); // Hide ratings after submission
+            }, [moodRatingAfter, impactRating, pixelArtDataUrl, affirmation]);
+
+
+            const describeArt = React.useCallback(async () => {
+                setIsDescriptionLoading(true);
+                setArtDescription('');
+                setErrorMessage('');
+
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 700));
+
+                    if (!llmConcept || llmPalette.length === 0 || !llmDrawType) {
+                        throw new Error('No art concept, palette, or drawing type available to describe. Please generate art first.');
+                    }
+
+                    const colorNames = llmPalette.map(hex => hexToColorName[hex] || hex);
+                    
+                    const description = `This pixel art, depicting ${llmDrawType}, is based on the concept: "${llmConcept}". It uses a vibrant palette of colors including ${colorNames.join(', ')}, designed to evoke feelings of positivity and joy.`;
+                    setArtDescription(description);
+                    // Removed logInteraction call
+
+                } catch (error) {
+                    console.error('Error describing art:', error);
+                    setErrorMessage(`Error describing art: ${error.message || 'Something went wrong.'}`);
+                    // Removed logInteraction call
+                } finally {
+                    setIsDescriptionLoading(false);
+                }
+            }, [llmConcept, llmPalette, llmDrawType, hexToColorName]);
+
+            const downloadArt = React.useCallback(() => {
+                if (pixelArtDataUrl) {
+                    const link = document.createElement('a');
+                    link.href = pixelArtDataUrl;
+                    link.download = `mood_pixel_art_${Date.now()}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    // Removed logInteraction call
+                } else {
+                    setErrorMessage("No pixel art to download. Please generate some art first!");
+                    // Removed logInteraction call
+                }
+            }, [pixelArtDataUrl]);
+
+            // Removed clearLogs function
+
+            const resetApp = React.useCallback(() => {
+                setMoodInput('');
+                setPixelArtDataUrl('');
+                setIsLoading(false);
+                setIsDrawingAnimating(false);
+                setErrorMessage('');
+                setAffirmation('');
+                setIsAffirmationLoading(false);
+                setLlmConcept('');
+                setLlmPalette([]);
+                setLlmDrawType('');
+                setArtDescription('');
+                setIsDescriptionLoading(false);
+                setSelectedArtStyle('All');
+                setSelectedPixelSize(10);
+                setMoodIntensity(50);
+                setShowSuggestions(false);
+                setFilteredSuggestions([]);
+                setMoodRatingBefore(5); // Reset mood ratings
+                setMoodRatingAfter(5);
+                setImpactRating(5);
+                setShowPostInteractionRatings(false); // Hide post-interaction ratings
+                // Removed logInteraction call
+            }, []);
+
+            // Handle mood input changes for suggestions
+            const handleMoodInputChange = (e) => {
+                const value = e.target.value;
+                setMoodInput(value);
+                if (value.trim().length > 0) {
+                    const currentWords = value.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+                    const lastWord = currentWords[currentWords.length - 1];
+                    const newSuggestions = moodSuggestions.filter(suggestion =>
+                        suggestion.startsWith(lastWord) && !currentWords.includes(suggestion)
+                    );
+                    setFilteredSuggestions(newSuggestions);
+                    setShowSuggestions(newSuggestions.length > 0);
+                } else {
+                    setShowSuggestions(false);
+                }
+            };
+
+            // Handle clicking on a suggestion
+            const handleSuggestionClick = (suggestion) => {
+                const currentWords = moodInput.split(/\s+/).filter(word => word.length > 0);
+                if (currentWords.length > 0) {
+                    currentWords[currentWords.length - 1] = suggestion; // Replace last word
+                    setMoodInput(currentWords.join(' ') + ' '); // Add space for next word
+                } else {
+                    setMoodInput(suggestion + ' ');
+                }
+                setShowSuggestions(false); // Hide suggestions after selection
+                moodInputRef.current.focus(); // Keep focus on input
+            };
+
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-purple-100 to-blue-200 flex items-center justify-center p-4 font-sans">
+                    <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl text-center border border-gray-200">
+                        <h1 className="text-4xl font-extrabold text-gray-800 mb-6 tracking-tight">
+                            Mood-Inspired Pixel Art
+                        </h1>
+                        <p className="text-gray-600 mb-8 text-lg leading-relaxed">
+                            Tell me how you're feeling, and I'll create a unique piece of uplifting pixel art with colors chosen to boost your mood!
+                        </p>
+
+                        {/* Mood Rating Before Interaction */}
+                        <div className="mb-6">
+                            <label htmlFor="mood-rating-before" className="block text-gray-700 text-xl font-semibold mb-3">
+                                Rate Your Current Mood: {moodRatingBefore} / 10
+                            </label>
+                            <input
+                                id="mood-rating-before"
+                                type="range"
+                                min="1"
+                                max="10"
+                                step="1"
+                                value={moodRatingBefore}
+                                onChange={(e) => setMoodRatingBefore(parseInt(e.target.value))}
+                                className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                            />
+                            <div className="flex justify-between text-gray-600 text-sm mt-2">
+                                <span>Very Negative</span>
+                                <span>Very Positive</span>
+                            </div>
+                        </div>
+
+                        {/* Mood Input Section */}
+                        <div className="mb-6 relative" ref={moodInputRef}> {/* Added ref here */}
+                            <label htmlFor="mood" className="block text-gray-700 text-xl font-semibold mb-3">
+                                Describe Your Mood:
+                            </label>
+                            <input
+                                id="mood"
+                                type="text"
+                                value={moodInput}
+                                onChange={handleMoodInputChange} // Use new handler
+                                onFocus={() => { // Show suggestions on focus if input has text
+                                    if (moodInput.trim().length > 0) {
+                                        const currentWords = moodInput.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+                                        const lastWord = currentWords[currentWords.length - 1];
+                                        const newSuggestions = moodSuggestions.filter(suggestion =>
+                                            suggestion.startsWith(lastWord) && !currentWords.includes(suggestion)
+                                        );
+                                        setFilteredSuggestions(newSuggestions);
+                                        setShowSuggestions(newSuggestions.length > 0);
+                                    }
+                                }}
+                                placeholder="e.g., Anxious, Happy, Tired, Creative..."
+                                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition duration-200 text-lg text-gray-800"
+                            />
+                            {showSuggestions && filteredSuggestions.length > 0 && (
+                                <ul className="suggestions-list absolute w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+                                    {filteredSuggestions.map((suggestion) => (
+                                        <li
+                                            key={suggestion}
+                                            className="p-3 text-left hover:bg-gray-100 cursor-pointer text-gray-700 text-base"
+                                            onClick={() => handleSuggestionClick(suggestion)}
+                                        >
+                                            {suggestion}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        {/* Mood Intensity Slider */}
+                        <div className="mb-6">
+                            <label htmlFor="mood-intensity" className="block text-gray-700 text-xl font-semibold mb-3">
+                                Mood Intensity: {moodIntensity}%
+                            </label>
+                            <input
+                                id="mood-intensity"
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="1"
+                                value={moodIntensity}
+                                onChange={(e) => setMoodIntensity(parseInt(e.target.value))}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
+                            />
+                            <div className="flex justify-between text-gray-500 text-sm mt-2">
+                                <span>Subtle</span>
+                                <span>Vibrant</span>
+                            </div>
+                        </div>
+
+                        {/* Art Style Selection */}
+                        <div className="mb-6">
+                            <label htmlFor="art-style" className="block text-gray-700 text-xl font-semibold mb-3">
+                                Choose an Art Style:
+                            </label>
+                            <select
+                                id="art-style"
+                                value={selectedArtStyle}
+                                onChange={(e) => setSelectedArtStyle(e.target.value)}
+                                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-purple-300 focus:border-purple-500 transition duration-200 text-lg text-gray-800"
+                            >
+                                {artStyles.map(style => (
+                                    <option key={style} value={style}>{style}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Pixel Size Control */}
+                        <div className="mb-8">
+                            <label htmlFor="pixel-size" className="block text-gray-700 text-xl font-semibold mb-3">
+                                Pixelation Level (Smaller = More Detail): {selectedPixelSize}px
+                            </label>
+                            <input
+                                id="pixel-size"
+                                type="range"
+                                min="2"
+                                max="20"
+                                step="1"
+                                value={selectedPixelSize}
+                                onChange={(e) => setSelectedPixelSize(parseInt(e.target.value))}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                            />
+                            <div className="flex justify-between text-gray-500 text-sm mt-2">
+                                <span>More Detail</span>
+                                <span>More Pixelated</span>
+                            </div>
+                        </div>
+
+                        {/* Affirmation Button */}
+                        <button
+                            onClick={generateAffirmationInternal}
+                            disabled={isAffirmationLoading || isLoading || !moodInput.trim()}
+                            className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 mb-4
+                                ${isAffirmationLoading
+                                    ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-100 cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-green-500 to-teal-600 text-white shadow-md hover:shadow-lg'
+                                }`}
+                        >
+                            {isAffirmationLoading ? (
+                                <span className="flex items-center justify-center">
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Generating Affirmation...
+                                </span>
+                            ) : (
+                                '✨ Get Affirmation'
+                            )}
+                        </button>
+
+                        {/* Display Affirmation */}
+                        {affirmation && (
+                            <div className="mt-4 mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg text-left italic">
+                                <p className="font-semibold">Your Affirmation:</p>
+                                <p>"{affirmation}"</p>
+                            </div>
+                        )}
+
+                        {/* Canvas element is now always rendered, but hidden */}
+                        <canvas
+                            ref={canvasRef}
+                            width={canvasSize}
+                            height={canvasSize}
+                            style={{ display: 'none' }}
+                        ></canvas>
+
+                        {/* Generate Art Buttons */}
+                        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
+                            <button
+                                onClick={() => generateArtInternal(false)}
+                                disabled={isLoading || isDrawingAnimating || !moodInput.trim()}
+                                className={`flex-1 py-4 px-6 rounded-lg text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105
+                                    ${isLoading || isDrawingAnimating || !moodInput.trim()
+                                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed'
+                                        : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl'
+                                    }`}
+                            >
+                                {(isLoading || isDrawingAnimating) ? (
+                                    <span className="flex items-center justify-center">
+                                        <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        {isDrawingAnimating ? 'Drawing Pixel Art...' : 'Generating Concept...'}
+                                    </span>
+                                ) : (
+                                    'Generate My Mood Art'
+                                )}
+                            </button>
+                            <button
+                                onClick={() => generateArtInternal(true)}
+                                disabled={isLoading || isDrawingAnimating}
+                                className={`flex-1 py-4 px-6 rounded-lg text-xl font-bold transition duration-300 ease-in-out transform hover:scale-105
+                                    ${isLoading || isDrawingAnimating
+                                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-gray-200 cursor-not-allowed'
+                                        : 'bg-gradient-to-r from-orange-500 to-yellow-600 text-white shadow-lg hover:shadow-xl'
+                                    }`}
+                            >
+                                {(isLoading || isDrawingAnimating) ? (
+                                    <span className="flex items-center justify-center">
+                                        <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                        Surprising You...
+                                    </span>
+                                ) : (
+                                    '🎲 Surprise Me!'
+                                )}
+                            </button>
+                        </div>
+
+
+                        {/* Error Message Display */}
+                        {errorMessage && (
+                            <div className="mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-left">
+                                <p className="font-semibold">Oops! Something went wrong:</p>
+                                <p>{errorMessage}</p>
+                            </div>
+                        )}
+
+                        {/* Generated Art Display */}
+                        {pixelArtDataUrl && (
+                            <div className="mt-10 border-t border-gray-200 pt-8" ref={artContainerRef}>
+                                <h2 className="text-3xl font-bold text-gray-800 mb-6">Your Uplifting Pixel Art</h2>
+                                <div className="bg-gray-100 p-2 rounded-lg shadow-inner flex justify-center">
+                                    <img
+                                        src={pixelArtDataUrl}
+                                        alt="Generated Pixel Art"
+                                        style={{ width: `${canvasSize}px`, height: `${canvasSize}px`, imageRendering: 'pixelated' }}
+                                        className="max-w-full rounded-lg shadow-md image-rendering-pixelated"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "https://placehold.co/400x400/FF0000/FFFFFF?text=Pixel+Art+Load+Error";
+                                            setErrorMessage("Failed to load generated pixel art. It might be corrupted or missing.");
+                                            // Removed logInteraction call
+                                        }}
+                                    />
+                                </div>
+                                <p className="text-gray-500 text-sm mt-4">
+                                    This art was generated to evoke positive feelings using a palette based on color psychology.
+                                </p>
+
+                                {/* Action Buttons */}
+                                <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
+                                    {/* Regenerate Button */}
+                                    <button
+                                        onClick={() => generateArtInternal(false)}
+                                        disabled={isLoading || isDrawingAnimating}
+                                        className={`flex-1 py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105
+                                            ${isLoading || isDrawingAnimating
+                                                ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-100 cursor-not-allowed'
+                                                : 'bg-gradient-to-r from-pink-500 to-red-600 text-white shadow-md hover:shadow-lg'
+                                            }`}
+                                    >
+                                        {isLoading || isDrawingAnimating ? (
+                                            <span className="flex items-center justify-center">
+                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                {isDrawingAnimating ? 'Drawing New Art...' : 'Generating New Concept...'}
+                                            </span>
+                                        ) : (
+                                            '🔄 Regenerate Art'
+                                        )}
+                                    </button>
+
+                                    {/* Download Art Button */}
+                                    <button
+                                        onClick={downloadArt}
+                                        disabled={!pixelArtDataUrl || isLoading || isDrawingAnimating}
+                                        className={`flex-1 py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105
+                                            ${!pixelArtDataUrl || isLoading || isDrawingAnimating
+                                                ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-100 cursor-not-allowed'
+                                                : 'bg-gradient-to-r from-blue-500 to-green-600 text-white shadow-md hover:shadow-lg'
+                                            }`}
+                                    >
+                                        ⬇️ Download Art
+                                    </button>
+                                </div>
+
+                                {/* Describe Art Button */}
+                                <button
+                                    onClick={describeArt}
+                                    disabled={isDescriptionLoading || isLoading || isDrawingAnimating || !llmConcept || llmPalette.length === 0 || !llmDrawType}
+                                    className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 mt-4
+                                        ${isDescriptionLoading || isLoading || isDrawingAnimating
+                                            ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-100 cursor-not-allowed'
+                                            : 'bg-gradient-to-r from-indigo-500 to-purple-700 text-white shadow-md hover:shadow-lg'
+                                            }`}
+                                >
+                                    {isDescriptionLoading ? (
+                                        <span className="flex items-center justify-center">
+                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            Describing Art...
+                                        </span>
+                                    ) : (
+                                        '✨ Describe Pixel Art'
+                                    )}
+                                </button>
+
+                                {/* Display Art Description */}
+                                {artDescription && (
+                                    <div className="mt-4 p-4 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg text-left">
+                                        <p className="font-semibold">AI Art Description:</p>
+                                        <p>{artDescription}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Post-Interaction Ratings (Mood After & Impact) */}
+                        {(pixelArtDataUrl || affirmation) && showPostInteractionRatings && (
+                            <div className="mt-8 pt-8 border-t border-gray-200">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-6">Rate Your Experience</h2>
+
+                                <div className="mb-6">
+                                    <label htmlFor="impact-rating" className="block text-gray-700 text-xl font-semibold mb-3">
+                                        How much did this {pixelArtDataUrl ? 'art' : 'affirmation'} resonate or improve your mood? {impactRating} / 10
+                                    </label>
+                                    <input
+                                        id="impact-rating"
+                                        type="range"
+                                        min="1"
+                                        max="10"
+                                        step="1"
+                                        value={impactRating}
+                                        onChange={(e) => setImpactRating(parseInt(e.target.value))}
+                                        className="w-full h-2 bg-green-200 rounded-lg appearance-none cursor-pointer accent-green-500"
+                                    />
+                                    <div className="flex justify-between text-gray-600 text-sm mt-2">
+                                        <span>Not at all</span>
+                                        <span>Very much</span>
+                                    </div>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label htmlFor="mood-rating-after" className="block text-gray-700 text-xl font-semibold mb-3">
+                                        How are you feeling now? {moodRatingAfter} / 10
+                                    </label>
+                                    <input
+                                        id="mood-rating-after"
+                                        type="range"
+                                        min="1"
+                                        max="10"
+                                        step="1"
+                                        value={moodRatingAfter}
+                                        onChange={(e) => setMoodRatingAfter(parseInt(e.target.value))}
+                                        className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                    />
+                                    <div className="flex justify-between text-gray-600 text-sm mt-2">
+                                        <span>Very Negative</span>
+                                        <span>Very Positive</span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleSubmitPostInteractionRatings}
+                                    className="w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 bg-purple-600 text-white shadow-md hover:shadow-lg"
+                                >
+                                    Submit Ratings
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Reset Button (removed log buttons) */}
+                        <div className="flex justify-center mt-8">
+                            <button
+                                onClick={resetApp}
+                                className="w-full py-3 px-6 rounded-lg text-lg font-bold transition duration-300 ease-in-out transform hover:scale-105 bg-gray-200 text-gray-700 shadow-md hover:shadow-lg hover:bg-gray-300"
+                            >
+                                Reset App
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
 </body>
 </html>
