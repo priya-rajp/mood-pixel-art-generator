@@ -1,27 +1,12 @@
-const express = require('express');
-const router = express.Router();
-const Art = require('../models/Art');
+const artPieces = []; // in-memory storage
 
-// Save new art
-router.post('/', async (req, res) => {
-  try {
-    const { mood, pixelData } = req.body;
-    const newArt = new Art({ mood, pixelData });
-    await newArt.save();
-    res.status(201).json(newArt);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.post('/api/art', (req, res) => {
+  const { mood, pixelData } = req.body;
+  const newArt = { mood, pixelData, createdAt: new Date() };
+  artPieces.push(newArt);
+  res.status(201).json(newArt);
 });
 
-// Get all art
-router.get('/', async (req, res) => {
-  try {
-    const artPieces = await Art.find();
-    res.json(artPieces);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.get('/api/art', (req, res) => {
+  res.json(artPieces);
 });
-
-module.exports = router;
